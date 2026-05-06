@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post("/signup", asyncHandler(authController.signup));
 router.post("/login", asyncHandler(authController.login));
+router.post("/google", asyncHandler(authController.googleLogin));
 router.get("/me", authenticate, asyncHandler(authController.getMe));
 router.put("/profile", authenticate, asyncHandler(authController.updateProfile));
 router.put("/password", authenticate, asyncHandler(authController.updatePassword));

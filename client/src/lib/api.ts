@@ -136,6 +136,12 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     }),
 
+  googleLogin: (credential: string) =>
+    request<{ user: any; token: string }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    }),
+
   signup: (data: { email: string; password: string; firstName: string; lastName: string }) =>
     request<{ user: any; token: string }>("/auth/signup", {
       method: "POST",

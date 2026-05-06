@@ -10,6 +10,11 @@ async function login(req, res) {
   res.json(result);
 }
 
+async function googleLogin(req, res) {
+  const result = await authService.loginWithGoogle(req.body);
+  res.json(result);
+}
+
 async function getMe(req, res) {
   const user = await authService.getCurrentUser(req.user.id);
   res.json({ user });
@@ -28,6 +33,7 @@ async function updatePassword(req, res) {
 module.exports = {
   signup,
   login,
+  googleLogin,
   getMe,
   updateProfile,
   updatePassword,

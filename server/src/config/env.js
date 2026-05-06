@@ -41,5 +41,6 @@ module.exports = {
   clientUrl: process.env.CLIENT_URL || "http://localhost:8080",
   jwtSecret: process.env.JWT_SECRET || "fallback_secret",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "",
   database,
 };

@@ -1,6 +1,7 @@
 const pool = require("../config/database");
 const { mapOrder } = require("../models/orderModel");
 const createHttpError = require("../utils/httpError");
+const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
 
 async function createOrder(user, data) {
   if (user.role === "admin") {
@@ -11,6 +12,20 @@ async function createOrder(user, data) {
   if (!items || items.length === 0) {
     throw createHttpError(400, "Order must have at least one item.");
   }
+
+  if (!shippingInfo?.firstName || !shippingInfo?.lastName || !shippingInfo?.email || !shippingInfo?.phone || !shippingInfo?.street || !shippingInfo?.city) {
+    throw createHttpError(400, "Complete shipping information is required.");
+  }
+
+  if (!isValidEmail(shippingInfo.email)) {
+    throw createHttpError(400, "Enter a valid shipping email address.");
+  }
+
+  if (!isValidNepalPhone(shippingInfo.phone)) {
+    throw createHttpError(400, "Enter a valid Nepal mobile number.");
+  }
+
+  const shippingPhone = formatNepalPhone(shippingInfo.phone);
 
   const orderNumber = `ORD-${Date.now().toString().slice(-8)}`;
   const [result] = await pool.query(
@@ -29,12 +44,12 @@ async function createOrder(user, data) {
       shippingInfo?.firstName,
       shippingInfo?.lastName,
       shippingInfo?.email,
-      shippingInfo?.phone,
+      shippingPhone,
       shippingInfo?.street,
       shippingInfo?.city,
       shippingInfo?.state,
       shippingInfo?.zip,
-      shippingInfo?.country,
+      shippingInfo?.country || DEFAULT_COUNTRY,
     ]
   );
 
