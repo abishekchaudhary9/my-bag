@@ -5,15 +5,17 @@ import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import { toast } from "sonner";
+import { productsApi } from "@/lib/api";
 
 export default function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const { toggleWish, isWished } = useStore();
   const { state: authState, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [color, setColor] = useState(product.colors[0]);
+  const canUseWishlist = authState.isAuthenticated && !isAdmin;
   const wished = isWished(product.id);
 
-  const handleWishToggle = (e: React.MouseEvent) => {
+  const handleWishToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!authState.isAuthenticated) {
       toast.info("Sign in required", { description: "Please sign in to save items." });
@@ -24,7 +26,18 @@ export default function ProductCard({ product, index = 0 }: { product: Product; 
       toast.error("Admin accounts cannot use wishlist");
       return;
     }
-    toggleWish(product);
+
+    if (/^\d+$/.test(String(product.id))) {
+      toggleWish(product);
+      return;
+    }
+
+    try {
+      const { product: apiProduct } = await productsApi.get(product.slug);
+      toggleWish(apiProduct);
+    } catch {
+      toast.error("Could not save this item. Please open the product first.");
+    }
   };
 
   return (
@@ -55,17 +68,19 @@ export default function ProductCard({ product, index = 0 }: { product: Product; 
               {product.compareAt && <Tag tone="accent">Sale</Tag>}
             </div>
           )}
-          <button
-            type="button"
-            aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
-            onClick={handleWishToggle}
-            className="absolute top-3 right-3 h-9 w-9 grid place-items-center bg-background/80 backdrop-blur-sm hover:bg-background transition"
-          >
-            <Heart
-              className={`h-4 w-4 transition ${wished ? "fill-accent text-accent" : "text-foreground"}`}
-              strokeWidth={1.5}
-            />
-          </button>
+          {canUseWishlist && (
+            <button
+              type="button"
+              aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+              onClick={handleWishToggle}
+              className="absolute top-3 right-3 h-9 w-9 grid place-items-center bg-background/80 backdrop-blur-sm hover:bg-background transition"
+            >
+              <Heart
+                className={`h-4 w-4 transition ${wished ? "fill-accent text-accent" : "text-foreground"}`}
+                strokeWidth={1.5}
+              />
+            </button>
+          )}
         </div>
       </Link>
       <div className="mt-4 flex items-start justify-between gap-4">

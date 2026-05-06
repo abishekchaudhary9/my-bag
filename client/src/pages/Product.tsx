@@ -23,6 +23,7 @@ export default function ProductPage() {
   const [size, setSize] = useState(product?.sizes?.[0] ?? "");
   const [qty, setQty] = useState(1);
   const [zoom, setZoom] = useState(false);
+  const canUseWishlist = authState.isAuthenticated && !isAdmin;
 
   // Always fetch from API to get the correct database ID
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function ProductPage() {
     toast.success(`${product.name} added`, { description: `${color.name} · ${size}` });
   };
 
-  const handleWishToggle = () => {
+  const handleWishToggle = async () => {
     if (!authState.isAuthenticated) {
       toast.info("Sign in required", { description: "Please sign in to save items to your wishlist." });
       navigate("/login");
@@ -94,7 +95,18 @@ export default function ProductPage() {
       toast.error("Admin accounts cannot use wishlist");
       return;
     }
-    toggleWish(product);
+
+    if (/^\d+$/.test(String(product.id))) {
+      toggleWish(product);
+      return;
+    }
+
+    try {
+      const { product: apiProduct } = await productsApi.get(product.slug);
+      toggleWish(apiProduct);
+    } catch {
+      toast.error("Could not save this item. Please try again.");
+    }
   };
 
   return (
@@ -223,13 +235,15 @@ export default function ProductPage() {
             >
               Add to bag — Rs {product.price * qty}
             </button>
-            <button
-              onClick={handleWishToggle}
-              aria-label="Wishlist"
-              className="p-3.5 border border-border hover:border-foreground transition"
-            >
-              <Heart className={`h-4 w-4 ${isWished(product.id) ? "fill-accent text-accent" : ""}`} strokeWidth={1.5} />
-            </button>
+            {canUseWishlist && (
+              <button
+                onClick={handleWishToggle}
+                aria-label="Wishlist"
+                className="p-3.5 border border-border hover:border-foreground transition"
+              >
+                <Heart className={`h-4 w-4 ${isWished(product.id) ? "fill-accent text-accent" : ""}`} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
 
           <div className="mt-4 text-xs text-muted-foreground flex items-center gap-2">
