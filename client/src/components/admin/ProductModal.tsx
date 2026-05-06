@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { resolveAssetUrl, uploadsApi } from "@/lib/api";
+import { Category, categories } from "@/data/products";
 
 type ColorEntry = { name: string; hex: string; image: string };
 
 type ProductForm = {
-  slug: string; name: string; tagline: string; category: string;
+  slug: string; name: string; tagline: string; category: Category;
   price: number; compareAt: number; stock: number; material: string;
   description: string; isNew: boolean; isBestseller: boolean;
   colors: ColorEntry[];
 };
 
 const empty: ProductForm = {
-  slug: "", name: "", tagline: "", category: "totes",
+  slug: "", name: "", tagline: "", category: "handbags",
   price: 0, compareAt: 0, stock: 0, material: "",
   description: "", isNew: false, isBestseller: false,
   colors: [{ name: "", hex: "#000000", image: "" }],
@@ -33,7 +34,7 @@ export default function ProductModal({
     if (product) {
       setForm({
         slug: product.slug || "", name: product.name || "",
-        tagline: product.tagline || "", category: product.category || "totes",
+        tagline: product.tagline || "", category: product.category || "handbags",
         price: product.price || 0, compareAt: product.compareAt || 0,
         stock: product.stock || 0, material: product.material || "",
         description: product.description || "",
@@ -111,14 +112,9 @@ export default function ProductModal({
             <label className="block">
               <span className="eyebrow">Category *</span>
               <select value={form.category} onChange={set("category")} className="mt-1 w-full bg-transparent border-b border-border py-2 text-sm focus:outline-none">
-                <option value="totes">Totes</option>
-                <option value="crossbody">Crossbody</option>
-                <option value="backpacks">Backpacks</option>
-                <option value="travel">Travel</option>
-                <option value="office">Office</option>
-                <option value="handbags">Handbags</option>
-                <option value="fashion">Fashion</option>
-                <option value="college">College</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.label}</option>
+                ))}
               </select>
             </label>
             <label className="block">
@@ -158,7 +154,7 @@ export default function ProductModal({
                 <div key={idx} className="flex items-start gap-2 p-3 bg-secondary/30 border border-border/50">
                   <div className="flex-1 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
-                      <input value={c.name} onChange={(e) => updateColor(idx, "name", e.target.value)} placeholder="Color name (e.g. Onyx)"
+                      <input required value={c.name} onChange={(e) => updateColor(idx, "name", e.target.value)} placeholder="Color name (e.g. Onyx)"
                         className="bg-transparent border-b border-border focus:border-foreground py-1.5 text-xs focus:outline-none" />
                       <div className="flex items-center gap-2">
                         <input type="color" value={c.hex} onChange={(e) => updateColor(idx, "hex", e.target.value)}
@@ -167,7 +163,7 @@ export default function ProductModal({
                           className="flex-1 bg-transparent border-b border-border focus:border-foreground py-1.5 text-xs focus:outline-none font-mono" />
                       </div>
                     </div>
-                    <input value={c.image} onChange={(e) => updateColor(idx, "image", e.target.value)}
+                    <input required value={c.image} onChange={(e) => updateColor(idx, "image", e.target.value)}
                       placeholder="Image URL (e.g. /images/my-bag.jpg or https://...)"
                       className="w-full bg-transparent border-b border-border focus:border-foreground py-1.5 text-xs focus:outline-none" />
                     <label className="inline-flex cursor-pointer items-center border border-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] hover:border-foreground transition-colors">

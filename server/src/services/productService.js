@@ -2,6 +2,37 @@ const pool = require("../config/database");
 const { mapProduct } = require("../models/productModel");
 const createHttpError = require("../utils/httpError");
 
+const ALLOWED_CATEGORIES = new Set([
+  "handbags",
+  "backpacks",
+  "travel",
+  "office",
+  "college",
+  "fashion",
+  "accessories",
+]);
+
+function validateProductPayload(data) {
+  const { slug, name, category, price, colors } = data;
+
+  if (!slug || !name || !category || !price) {
+    throw createHttpError(400, "slug, name, category, and price are required.");
+  }
+
+  if (!ALLOWED_CATEGORIES.has(category)) {
+    throw createHttpError(400, `Invalid product category: ${category}.`);
+  }
+
+  if (!Array.isArray(colors) || colors.length === 0) {
+    throw createHttpError(400, "At least one product color is required.");
+  }
+
+  const invalidColor = colors.find((color) => !color.name || !color.hex || !color.image);
+  if (invalidColor) {
+    throw createHttpError(400, "Each product color requires a name, hex value, and image.");
+  }
+}
+
 async function fetchFullProduct(productRow) {
   const productId = productRow.id;
   const [sizes] = await pool.query("SELECT size_name FROM product_sizes WHERE product_id = ?", [productId]);
@@ -43,15 +74,21 @@ async function getProductBySlug(slug) {
 async function createProduct(data) {
   const { slug, name, tagline, category, price, compareAt, rating, reviews, stock, material, description, isNew, isBestseller, sizes, colors, details } = data;
 
-  if (!slug || !name || !category || !price) {
-    throw createHttpError(400, "slug, name, category, and price are required.");
-  }
+  validateProductPayload(data);
 
-  const [result] = await pool.query(
-    `INSERT INTO products (slug, name, tagline, category, price, compare_at, rating, reviews, stock, material, description, is_new, is_bestseller)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [slug, name, tagline || null, category, price, compareAt || null, rating || 0, reviews || 0, stock || 0, material || null, description || null, isNew ? 1 : 0, isBestseller ? 1 : 0]
-  );
+  let result;
+  try {
+    [result] = await pool.query(
+      `INSERT INTO products (slug, name, tagline, category, price, compare_at, rating, reviews, stock, material, description, is_new, is_bestseller)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [slug, name, tagline || null, category, price, compareAt || null, rating || 0, reviews || 0, stock || 0, material || null, description || null, isNew ? 1 : 0, isBestseller ? 1 : 0]
+    );
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      throw createHttpError(409, "Product slug already exists.");
+    }
+    throw err;
+  }
 
   const productId = result.insertId;
   await insertProductRelations(productId, sizes, colors, details);
@@ -62,6 +99,17 @@ async function createProduct(data) {
 
 async function updateProduct(productId, data) {
   const { name, tagline, category, price, compareAt, rating, reviews, stock, material, description, isNew, isBestseller, sizes, colors, details } = data;
+
+  if (category && !ALLOWED_CATEGORIES.has(category)) {
+    throw createHttpError(400, `Invalid product category: ${category}.`);
+  }
+
+  if (colors) {
+    const invalidColor = colors.find((color) => !color.name || !color.hex || !color.image);
+    if (invalidColor) {
+      throw createHttpError(400, "Each product color requires a name, hex value, and image.");
+    }
+  }
 
   await pool.query(
     `UPDATE products SET name = COALESCE(?, name), tagline = COALESCE(?, tagline), category = COALESCE(?, category),
