@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, ReactNode } from "react";
 import { Product } from "@/data/products";
 import { useAuth } from "@/context/AuthContext";
-import { wishlistApi } from "@/lib/api";
+import { resolveAssetUrl, wishlistApi } from "@/lib/api";
 
 export type CartItem = {
   productId: string;
@@ -42,7 +42,12 @@ const initial: State = { cart: [], saved: [], wishlist: [], wishlistItems: [], r
 
 const itemKey = (i: CartItem) => `${i.productId}-${i.color}-${i.size}`;
 const productId = (id: string | number) => String(id);
-const normalizeProduct = (product: Product): Product => ({ ...product, id: productId(product.id) });
+const normalizeCartItem = (item: CartItem): CartItem => ({ ...item, image: resolveAssetUrl(item.image) });
+const normalizeProduct = (product: Product): Product => ({
+  ...product,
+  id: productId(product.id),
+  colors: product.colors.map((color) => ({ ...color, image: resolveAssetUrl(color.image) })),
+});
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -50,6 +55,8 @@ function reducer(state: State, action: Action): State {
       return {
         ...initial,
         ...action.state,
+        cart: (action.state.cart || []).map(normalizeCartItem),
+        saved: (action.state.saved || []).map(normalizeCartItem),
         wishlist: (action.state.wishlist || []).map(productId),
         wishlistItems: (action.state.wishlistItems || []).map(normalizeProduct),
       };
@@ -199,7 +206,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           slug: p.slug,
           name: p.name,
           price: p.price,
-          image: p.colors.find((c) => c.name === color)?.image ?? p.colors[0].image,
+          image: resolveAssetUrl(p.colors.find((c) => c.name === color)?.image ?? p.colors[0].image),
           color,
           size,
           qty,

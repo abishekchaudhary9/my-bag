@@ -7,14 +7,14 @@ function errorHandler(err, req, res, next) {
     return next(err);
   }
 
-  const statusCode = err.statusCode || err.status || 500;
+  const statusCode = err.statusCode || err.status || (err.name === "MulterError" ? 400 : 500);
 
   if (statusCode >= 500) {
     console.error("Unhandled error:", err);
   }
 
   res.status(statusCode).json({
-    error: statusCode >= 500 ? "Server error" : err.message,
+    error: statusCode >= 500 && !err.expose ? "Server error" : err.message,
   });
 }
 
