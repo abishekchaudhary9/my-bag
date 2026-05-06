@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const env = require("./config/env");
+const initDatabase = require("./config/initDatabase");
 const { healthCheck, databaseHealthCheck } = require("./controllers/healthController");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
@@ -49,11 +50,18 @@ app.use(errorHandler);
 const PORT = process.env.PORT || env.port || 5000;
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Maison API server running on port ${PORT}`);
-    console.log("Health: /api/health");
-    console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
-  });
+  initDatabase()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Maison API server running on port ${PORT}`);
+        console.log("Health: /api/health");
+        console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
+      });
+    })
+    .catch((err) => {
+      console.error("Server startup failed:", err.message);
+      process.exit(1);
+    });
 }
 
 module.exports = app;
