@@ -64,11 +64,12 @@ export default function Header() {
   const suggestions = q
     ? products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 5)
     : [];
+  const iconButtonClass = "flex h-9 w-9 shrink-0 items-center justify-center hover:text-accent transition-colors max-[360px]:h-8 max-[360px]:w-8";
 
   return (
     <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md hairline">
-      <div className="container-luxe flex items-center justify-between h-16 md:h-20">
-        <Link to="/" className="font-display text-xl md:text-2xl tracking-tight">
+      <div className="container-luxe flex items-center justify-between gap-2 h-14 px-3 sm:h-16 sm:px-6 md:h-20 md:px-10 lg:px-14">
+        <Link to="/" className="font-display text-lg sm:text-xl md:text-2xl tracking-tight shrink-0 max-[360px]:text-base">
           MAISON<span className="text-accent">.</span>
         </Link>
         <nav className="hidden lg:flex items-center gap-8">
@@ -86,11 +87,11 @@ export default function Header() {
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-1.5 md:gap-3">
+        <div className="flex shrink-0 items-center justify-end gap-0.5 sm:gap-1.5 md:gap-3">
           <button
             aria-label="Search"
             onClick={() => setOpen((v) => !v)}
-            className="p-2 hover:text-accent transition-colors"
+            className={iconButtonClass}
           >
             <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
           </button>
@@ -104,7 +105,7 @@ export default function Header() {
                   setShowNotifications((v) => !v);
                   setShowUserMenu(false);
                 }}
-                className="p-2 hover:text-accent transition-colors relative"
+                className={`${iconButtonClass} relative`}
               >
                 <Bell className="h-[18px] w-[18px]" strokeWidth={1.5} />
                 {unreadCount > 0 && (
@@ -117,7 +118,7 @@ export default function Header() {
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-background border border-border shadow-lift z-50 animate-fade-in max-h-96 overflow-y-auto">
+                  <div className="fixed left-3 right-3 top-16 bg-background border border-border shadow-lift z-50 animate-fade-in max-h-[min(24rem,calc(100vh-5rem))] overflow-y-auto sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
                     <div className="px-4 py-3 border-b border-border flex justify-between items-center sticky top-0 bg-background/95 backdrop-blur z-10">
                       <div className="text-sm font-medium">Notifications</div>
                       <div className="flex gap-3">
@@ -176,14 +177,14 @@ export default function Header() {
           )}
 
           {/* User / Auth button */}
-          <div className="relative hidden sm:block">
+          <div className="relative">
             <button
               aria-label="Account"
               onClick={() => {
                 setShowUserMenu((v) => !v);
                 setShowNotifications(false);
               }}
-              className="p-2 hover:text-accent transition-colors"
+              className={iconButtonClass}
             >
               <User className="h-[18px] w-[18px]" strokeWidth={1.5} />
               {authState.isAuthenticated && (
@@ -194,7 +195,7 @@ export default function Header() {
             {showUserMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-56 bg-background border border-border shadow-lift z-50 animate-fade-in">
+                <div className="fixed left-3 right-3 top-16 bg-background border border-border shadow-lift z-50 animate-fade-in sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56">
                   {authState.isAuthenticated ? (
                     <div className="py-2">
                       <div className="px-4 py-2 border-b border-border">
@@ -236,7 +237,7 @@ export default function Header() {
             )}
           </div>
 
-          <Link to="/wishlist" aria-label="Wishlist" className="p-2 hover:text-accent transition-colors relative">
+          <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
             <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
             {state.wishlist.length > 0 && (
               <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
@@ -244,7 +245,7 @@ export default function Header() {
               </span>
             )}
           </Link>
-          <Link to="/cart" aria-label="Cart" className="p-2 hover:text-accent transition-colors relative">
+          <Link to="/cart" aria-label="Cart" className={`${iconButtonClass} relative`}>
             <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
             {totals.count > 0 && (
               <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-foreground text-background text-[10px] flex items-center justify-center font-medium">
