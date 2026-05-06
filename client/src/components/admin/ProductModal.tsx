@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
+import { resolveAssetUrl, uploadsApi } from "@/lib/api";
 
 type ColorEntry = { name: string; hex: string; image: string };
 
@@ -25,6 +26,7 @@ export default function ProductModal({
 }) {
   const [form, setForm] = useState<ProductForm>(empty);
   const [saving, setSaving] = useState(false);
+  const [uploadingColor, setUploadingColor] = useState<number | null>(null);
   const isEdit = !!product;
 
   useEffect(() => {
@@ -62,6 +64,19 @@ export default function ProductModal({
   const removeColor = (idx: number) => {
     if (form.colors.length <= 1) return;
     setForm({ ...form, colors: form.colors.filter((_, i) => i !== idx) });
+  };
+
+  const uploadColorImage = async (idx: number, file?: File) => {
+    if (!file) return;
+    setUploadingColor(idx);
+    try {
+      const { image } = await uploadsApi.image(file);
+      updateColor(idx, "image", image.url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Image upload failed.");
+    } finally {
+      setUploadingColor(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,9 +170,19 @@ export default function ProductModal({
                     <input value={c.image} onChange={(e) => updateColor(idx, "image", e.target.value)}
                       placeholder="Image URL (e.g. /images/my-bag.jpg or https://...)"
                       className="w-full bg-transparent border-b border-border focus:border-foreground py-1.5 text-xs focus:outline-none" />
+                    <label className="inline-flex cursor-pointer items-center border border-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] hover:border-foreground transition-colors">
+                      {uploadingColor === idx ? "Uploading..." : "Upload Image"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingColor !== null}
+                        onChange={(e) => uploadColorImage(idx, e.target.files?.[0])}
+                        className="sr-only"
+                      />
+                    </label>
                     {c.image && (
                       <div className="h-16 w-16 bg-secondary overflow-hidden mt-1 border border-border/50">
-                        <img key={c.image} src={c.image} alt="preview" className="h-full w-full object-cover"
+                        <img key={c.image} src={resolveAssetUrl(c.image)} alt="preview" className="h-full w-full object-cover"
                           onError={(e) => { e.currentTarget.src = ""; e.currentTarget.alt = "✗"; e.currentTarget.className = "h-full w-full grid place-items-center text-xs text-muted-foreground"; }} />
                       </div>
                     )}

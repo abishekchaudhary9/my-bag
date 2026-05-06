@@ -11,6 +11,40 @@ function normalizeApiBase(value?: string) {
 }
 
 const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL);
+const ASSET_BASE = API_BASE.replace(/\/api$/, "");
+
+export function resolveAssetUrl(value?: string | null) {
+  if (!value) return "";
+  const trimmed = value.trim();
+
+  if (/^(https?:)?\/\//i.test(trimmed) || /^(data|blob):/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("/images/")) {
+    return `${ASSET_BASE}${trimmed}`;
+  }
+
+  return trimmed;
+}
+
+function normalizeAssetUrls<T>(value: T): T {
+  if (typeof value === "string") {
+    return resolveAssetUrl(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeAssetUrls(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, normalizeAssetUrls(item)])
+    ) as T;
+  }
+
+  return value;
+}
 
 function getToken(): string | null {
   try {
@@ -61,7 +95,37 @@ async function request<T>(
     throw new Error(data?.error || `Request failed with status ${res.status}`);
   }
 
-  return data as T;
+  return normalizeAssetUrls(data) as T;
+}
+
+async function uploadRequest<T>(endpoint: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  const text = await res.text();
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { error: text };
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || `Upload failed with status ${res.status}`);
+  }
+
+  return normalizeAssetUrls(data) as T;
 }
 
 // ─── Auth ────────────────────────────────────────────────────
@@ -122,6 +186,14 @@ export const productsApi = {
 };
 
 // ─── Orders ──────────────────────────────────────────────────
+export const uploadsApi = {
+  image: (file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    return uploadRequest<{ image: { url: string; publicId: string } }>("/uploads/image", formData);
+  },
+};
+
 export const ordersApi = {
   create: (data: any) =>
     request<{ order: any }>("/orders", {

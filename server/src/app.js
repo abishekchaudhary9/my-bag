@@ -37,6 +37,7 @@ app.use("/api/wishlist", require("./routes/wishlist"));
 app.use("/api/coupons", require("./routes/coupons"));
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/uploads", require("./routes/uploads"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/questions", require("./routes/questions"));
 app.use("/api/notifications", require("./routes/notifications"));
