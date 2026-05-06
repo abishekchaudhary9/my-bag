@@ -28,11 +28,11 @@ const databaseUrl =
 
 const databaseFromUrl = parseDatabaseUrl(databaseUrl);
 const database = {
-  host: process.env.DB_HOST || process.env.MYSQLHOST || databaseFromUrl.host || "localhost",
-  port: parseNumber(process.env.DB_PORT || process.env.MYSQLPORT || databaseFromUrl.port, 3306),
-  user: process.env.DB_USER || process.env.MYSQLUSER || databaseFromUrl.user || "root",
-  password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || databaseFromUrl.password || "",
-  name: process.env.DB_NAME || process.env.MYSQLDATABASE || databaseFromUrl.name || "maison_db",
+  host: databaseFromUrl.host || process.env.MYSQLHOST || process.env.DB_HOST || "localhost",
+  port: parseNumber(databaseFromUrl.port || process.env.MYSQLPORT || process.env.DB_PORT, 3306),
+  user: databaseFromUrl.user || process.env.MYSQLUSER || process.env.DB_USER || "root",
+  password: databaseFromUrl.password || process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || "",
+  name: databaseFromUrl.name || process.env.MYSQLDATABASE || process.env.DB_NAME || "maison_db",
   connectTimeout: parseNumber(process.env.DB_CONNECT_TIMEOUT, 10000),
 };
 
