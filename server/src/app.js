@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const env = require("./config/env");
-const { healthCheck } = require("./controllers/healthController");
+const { healthCheck, databaseHealthCheck } = require("./controllers/healthController");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -41,6 +41,7 @@ app.use("/api/questions", require("./routes/questions"));
 app.use("/api/notifications", require("./routes/notifications"));
 
 app.get("/api/health", healthCheck);
+app.get("/api/health/db", databaseHealthCheck);
 
 app.use(notFound);
 app.use(errorHandler);
