@@ -6,6 +6,7 @@ import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { ordersApi } from "@/lib/api";
 import { toast } from "sonner";
+import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
 
 type Step = "shipping" | "payment" | "review";
 const STEPS: { key: Step; label: string; icon: typeof Truck }[] = [
@@ -30,7 +31,7 @@ export default function Checkout() {
     city: authState.user?.address?.city ?? "",
     state: authState.user?.address?.state ?? "",
     zip: authState.user?.address?.zip ?? "",
-    country: authState.user?.address?.country ?? "United States",
+    country: authState.user?.address?.country ?? DEFAULT_COUNTRY,
   });
 
   const [payment, setPayment] = useState({
@@ -44,6 +45,61 @@ export default function Checkout() {
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
+
+  const validateShipping = () => {
+    if (!shipping.firstName.trim() || !shipping.lastName.trim() || !shipping.street.trim() || !shipping.city.trim()) {
+      toast.error("Complete your shipping name and address.");
+      return false;
+    }
+
+    if (!isValidEmail(shipping.email)) {
+      toast.error("Enter a valid email address.");
+      return false;
+    }
+
+    if (!isValidNepalPhone(shipping.phone)) {
+      toast.error("Enter a valid Nepal mobile number.", {
+        description: "Use 98XXXXXXXX, 97XXXXXXXX, or +97798XXXXXXXX.",
+      });
+      return false;
+    }
+
+    setShipping((current) => ({
+      ...current,
+      phone: formatNepalPhone(current.phone),
+      country: current.country || DEFAULT_COUNTRY,
+    }));
+    return true;
+  };
+
+  const validatePayment = () => {
+    if (payment.method !== "card") return true;
+
+    const cardDigits = payment.cardNumber.replace(/\D/g, "");
+    const cvvDigits = payment.cvv.replace(/\D/g, "");
+
+    if (cardDigits.length < 13 || cardDigits.length > 19) {
+      toast.error("Enter a valid card number.");
+      return false;
+    }
+
+    if (!payment.cardName.trim()) {
+      toast.error("Enter the name on the card.");
+      return false;
+    }
+
+    if (!/^(0[1-9]|1[0-2])\s*\/?\s*\d{2}$/.test(payment.expiry.trim())) {
+      toast.error("Enter expiry as MM/YY.");
+      return false;
+    }
+
+    if (cvvDigits.length < 3 || cvvDigits.length > 4) {
+      toast.error("Enter a valid CVV.");
+      return false;
+    }
+
+    return true;
+  };
 
   if (authState.user?.role === "admin") {
     return (
@@ -110,6 +166,8 @@ export default function Checkout() {
   }
 
   const handlePlaceOrder = async () => {
+    if (!validateShipping() || !validatePayment()) return;
+
     setLoading(true);
     try {
       const orderData = {
@@ -125,7 +183,7 @@ export default function Checkout() {
         shipping: shippingMethod === "express" ? 25 : totals.shipping,
         discount: totals.discount,
         total: totals.total + (shippingMethod === "express" ? 25 : 0),
-        shippingInfo: shipping,
+        shippingInfo: { ...shipping, phone: formatNepalPhone(shipping.phone), country: shipping.country || DEFAULT_COUNTRY },
         paymentMethod: payment.method,
       };
 
@@ -134,6 +192,12 @@ export default function Checkout() {
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
     } catch (err: any) {
+      const message = err?.message || "";
+      if (message && message !== "Server error") {
+        toast.error(message);
+        return;
+      }
+
       // Fallback: create order locally if backend is unavailable
       const fallbackOrder = {
         id: `ORD-${Date.now().toString().slice(-8)}`,
@@ -211,7 +275,7 @@ export default function Checkout() {
                 <Field label="Last Name" value={shipping.lastName} onChange={(v) => setShipping({ ...shipping, lastName: v })} />
               </div>
               <Field label="Email" type="email" value={shipping.email} onChange={(v) => setShipping({ ...shipping, email: v })} />
-              <Field label="Phone" type="tel" value={shipping.phone} onChange={(v) => setShipping({ ...shipping, phone: v })} />
+              <Field label="Phone" type="tel" value={shipping.phone} onChange={(v) => setShipping({ ...shipping, phone: v })} placeholder="+977 98XXXXXXXX" />
               <Field label="Street Address" value={shipping.street} onChange={(v) => setShipping({ ...shipping, street: v })} />
               <div className="grid grid-cols-3 gap-4">
                 <Field label="City" value={shipping.city} onChange={(v) => setShipping({ ...shipping, city: v })} />
@@ -241,7 +305,7 @@ export default function Checkout() {
               </div>
 
               <button
-                onClick={() => setStep("payment")}
+                onClick={() => { if (validateShipping()) setStep("payment"); }}
                 className="group flex items-center justify-center gap-3 w-full bg-foreground text-background py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500 mt-4"
               >
                 Continue to Payment
@@ -329,7 +393,7 @@ export default function Checkout() {
                   Back
                 </button>
                 <button
-                  onClick={() => setStep("review")}
+                  onClick={() => { if (validatePayment()) setStep("review"); }}
                   className="group flex-1 flex items-center justify-center gap-3 bg-foreground text-background py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
                 >
                   Review Order

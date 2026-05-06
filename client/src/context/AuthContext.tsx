@@ -73,6 +73,7 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
 type AuthCtx = {
   state: AuthState;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  googleLogin: (credential: string) => Promise<{ success: boolean; error?: string }>;
   signup: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<{
     success: boolean;
     error?: string;
@@ -136,6 +137,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: err.message || "Login failed" };
       }
     },
+    googleLogin: async (credential) => {
+      try {
+        const { user, token } = await authApi.googleLogin(credential);
+        setToken(token);
+        dispatch({ type: "LOGIN", user });
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message || "Google login failed" };
+      }
+    },
     signup: async ({ email, password, firstName, lastName }) => {
       try {
         const { user, token } = await authApi.signup({ email, password, firstName, lastName });
@@ -155,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { user } = await authApi.updateProfile({
           firstName: updates.firstName,
           lastName: updates.lastName,
+          email: updates.email,
           phone: updates.phone,
           street: updates.address?.street,
           city: updates.address?.city,

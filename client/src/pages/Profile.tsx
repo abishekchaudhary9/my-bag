@@ -7,6 +7,7 @@ import { useStore } from "@/context/StoreContext";
 import { authApi, productsApi } from "@/lib/api";
 import { Product, products } from "@/data/products";
 import { toast } from "sonner";
+import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
 
 type Tab = "overview" | "settings" | "addresses" | "security";
 
@@ -236,7 +237,22 @@ function ProfileSettings({ user, onUpdate }: { user: any; onUpdate: (u: any) => 
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onUpdate(form);
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      toast.error("First and last name are required");
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (form.phone && !isValidNepalPhone(form.phone)) {
+      toast.error("Enter a valid Nepal mobile number", {
+        description: "Use 98XXXXXXXX, 97XXXXXXXX, or +97798XXXXXXXX.",
+      });
+      return;
+    }
+
+    await onUpdate({ ...form, phone: form.phone ? formatNepalPhone(form.phone) : "" });
     toast.success("Profile updated");
   };
 
@@ -259,7 +275,7 @@ function ProfileSettings({ user, onUpdate }: { user: any; onUpdate: (u: any) => 
       </label>
       <label className="block">
         <span className="eyebrow">Phone</span>
-        <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
+        <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+977 98XXXXXXXX" className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
       </label>
       <button type="submit" className="bg-foreground text-background px-7 py-3.5 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500">
         Save Changes
@@ -274,12 +290,12 @@ function AddressesTab({ user, onUpdate }: { user: any; onUpdate: (u: any) => voi
     city: user.address?.city ?? "",
     state: user.address?.state ?? "",
     zip: user.address?.zip ?? "",
-    country: user.address?.country ?? "United States",
+    country: user.address?.country ?? DEFAULT_COUNTRY,
   });
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onUpdate({ address: form });
+    await onUpdate({ address: { ...form, country: form.country || DEFAULT_COUNTRY } });
     toast.success("Address updated");
   };
 
@@ -326,6 +342,10 @@ function SecurityTab() {
     e.preventDefault();
     if (newPw !== confirmPw) {
       toast.error("Passwords do not match");
+      return;
+    }
+    if (newPw.length < 8 || !/[A-Z]/.test(newPw) || !/\d/.test(newPw)) {
+      toast.error("Password must be at least 8 characters and include one uppercase letter and one number");
       return;
     }
     try {

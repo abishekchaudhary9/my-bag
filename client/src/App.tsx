@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { ReactNode } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -30,17 +32,27 @@ import SizeGuide from "./pages/SizeGuide.tsx";
 import ScrollToTop from "./components/ScrollToTop.tsx";
 
 const queryClient = new QueryClient();
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+function AppProviders({ children }: { children: ReactNode }) {
+  if (googleClientId) {
+    return <GoogleOAuthProvider clientId={googleClientId}>{children}</GoogleOAuthProvider>;
+  }
+
+  return <>{children}</>;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <StoreProvider>
-          <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
+    <AppProviders>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <StoreProvider>
+            <BrowserRouter>
+              <ScrollToTop />
+              <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/shop" element={<Shop />} />
               <Route path="/product/:slug" element={<ProductPage />} />
@@ -69,11 +81,12 @@ const App = () => (
               <Route path="/size-guide" element={<SizeGuide />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </StoreProvider>
-      </AuthProvider>
-    </TooltipProvider>
+              </Routes>
+            </BrowserRouter>
+          </StoreProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </AppProviders>
   </QueryClientProvider>
 );
 

@@ -4,6 +4,7 @@ import { Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { isValidEmail } from "@/lib/validation";
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -28,6 +29,14 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setError("First and last name are required.");
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setError("Enter a valid email address.");
+      return;
+    }
     if (form.password !== form.confirm) {
       setError("Passwords do not match.");
       return;
@@ -45,8 +54,8 @@ export default function Signup() {
       const result = await signup({
         email: form.email,
         password: form.password,
-        firstName: form.firstName,
-        lastName: form.lastName,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
       });
       if (result.success) {
         toast.success("Welcome to Maison", { description: "Your account has been created." });
