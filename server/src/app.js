@@ -7,15 +7,20 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
+// ✅ CORS configuration
 app.use(cors({
-  origin: env.clientUrl,
+  origin: process.env.CLIENT_URL || env.clientUrl || "http://localhost:5173",
   credentials: true,
 }));
+
+// ✅ Body parsers
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// ✅ Static files
 app.use("/images", express.static(path.join(__dirname, "../public/images")));
 
+// ✅ Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", require("./routes/orders"));
@@ -27,16 +32,22 @@ app.use("/api/admin", require("./routes/admin"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/questions", require("./routes/questions"));
 app.use("/api/notifications", require("./routes/notifications"));
+
+// ✅ Health check
 app.get("/api/health", healthCheck);
 
+// ✅ Error handlers
 app.use(notFound);
 app.use(errorHandler);
 
+// ✅ FIXED: PORT handling for Render
+const PORT = process.env.PORT || env.port || 5000;
+
 if (require.main === module) {
-  app.listen(env.port, () => {
-    console.log(`Maison API server running on http://localhost:${env.port}`);
-    console.log(`Health: http://localhost:${env.port}/api/health`);
-    console.log(`CORS: ${env.clientUrl}`);
+  app.listen(PORT, () => {
+    console.log(`Maison API server running on port ${PORT}`);
+    console.log(`Health: /api/health`);
+    console.log(`CORS allowed: ${process.env.CLIENT_URL || env.clientUrl}`);
   });
 }
 
