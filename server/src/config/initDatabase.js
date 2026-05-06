@@ -306,10 +306,14 @@ async function init() {
     console.log("   User:     user@maison.com / user123\n");
   } catch (err) {
     console.error("Database initialization failed:", err.message);
-    process.exit(1);
+    throw err;
   } finally {
     if (conn) await conn.end();
   }
 }
 
-init();
+if (require.main === module) {
+  init().catch(() => process.exit(1));
+}
+
+module.exports = init;
