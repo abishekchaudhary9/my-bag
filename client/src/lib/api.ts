@@ -3,7 +3,14 @@
  * All API calls go through here for consistent error handling and auth headers.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const DEFAULT_API_BASE = "http://localhost:5000/api";
+
+function normalizeApiBase(value?: string) {
+  const base = (value || DEFAULT_API_BASE).trim().replace(/\/+$/, "");
+  return base.endsWith("/api") ? base : `${base}/api`;
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL);
 
 function getToken(): string | null {
   try {
@@ -41,10 +48,17 @@ async function request<T>(
     headers,
   });
 
-  const data = await res.json();
+  const text = await res.text();
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { error: text };
+  }
 
   if (!res.ok) {
-    throw new Error(data.error || `Request failed with status ${res.status}`);
+    throw new Error(data?.error || `Request failed with status ${res.status}`);
   }
 
   return data as T;

@@ -1,15 +1,24 @@
 /**
  * Database initialization script.
- * Creates the maison_db database and all tables, then seeds initial data.
+ * Creates the configured database and all tables, then seeds initial data.
  * Run with: npm run db:init
  */
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const env = require("./env");
 
+function escapeIdentifier(value) {
+  if (!/^[A-Za-z0-9_$]+$/.test(value)) {
+    throw new Error(`Invalid database name: ${value}`);
+  }
+  return `\`${value}\``;
+}
+
+const DB = escapeIdentifier(env.database.name);
+
 const SCHEMA = `
-CREATE DATABASE IF NOT EXISTS maison_db;
-USE maison_db;
+CREATE DATABASE IF NOT EXISTS ${DB};
+USE ${DB};
 
 -- Users
 CREATE TABLE IF NOT EXISTS users (
@@ -217,12 +226,12 @@ async function init() {
     const userHash = await bcrypt.hash("user123", 10);
 
     await conn.query(`
-      INSERT IGNORE INTO maison_db.users (email, password_hash, first_name, last_name, role, phone)
+      INSERT IGNORE INTO ${DB}.users (email, password_hash, first_name, last_name, role, phone)
       VALUES ('admin@maison.com', ?, 'Lucien', 'Beaumont', 'admin', '+39 055 123 4567')
     `, [adminHash]);
 
     await conn.query(`
-      INSERT IGNORE INTO maison_db.users (email, password_hash, first_name, last_name, role, phone, street, city, state, zip, country)
+      INSERT IGNORE INTO ${DB}.users (email, password_hash, first_name, last_name, role, phone, street, city, state, zip, country)
       VALUES ('user@maison.com', ?, 'Chiara', 'Rosetti', 'user', '+1 212 555 0100', '42 Mercer St', 'New York', 'NY', '10013', 'United States')
     `, [userHash]);
 
@@ -240,7 +249,7 @@ async function init() {
 
     for (const p of productsData) {
       const [result] = await conn.query(
-        `INSERT IGNORE INTO maison_db.products (slug, name, tagline, category, price, compare_at, rating, reviews, stock, material, description, is_new, is_bestseller)
+        `INSERT IGNORE INTO ${DB}.products (slug, name, tagline, category, price, compare_at, rating, reviews, stock, material, description, is_new, is_bestseller)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [p.slug, p.name, p.tagline, p.category, p.price, p.compare_at, p.rating, p.reviews, p.stock, p.material, p.description, p.is_new, p.is_bestseller]
       );
@@ -249,42 +258,42 @@ async function init() {
       if (!productId) continue; // already exists
 
       for (const size of p.sizes) {
-        await conn.query(`INSERT INTO maison_db.product_sizes (product_id, size_name) VALUES (?, ?)`, [productId, size]);
+        await conn.query(`INSERT INTO ${DB}.product_sizes (product_id, size_name) VALUES (?, ?)`, [productId, size]);
       }
       for (const color of p.colors) {
-        await conn.query(`INSERT INTO maison_db.product_colors (product_id, color_name, hex, image_url) VALUES (?, ?, ?, ?)`, [productId, color.name, color.hex, color.image]);
+        await conn.query(`INSERT INTO ${DB}.product_colors (product_id, color_name, hex, image_url) VALUES (?, ?, ?, ?)`, [productId, color.name, color.hex, color.image]);
       }
       for (const detail of p.details) {
-        await conn.query(`INSERT INTO maison_db.product_details (product_id, detail_text) VALUES (?, ?)`, [productId, detail]);
+        await conn.query(`INSERT INTO ${DB}.product_details (product_id, detail_text) VALUES (?, ?)`, [productId, detail]);
       }
     }
 
     console.log("Seeded 6 products with colors, sizes, and details.");
 
     // Seed coupons
-    await conn.query(`INSERT IGNORE INTO maison_db.coupons (code, discount_pct) VALUES ('WELCOME10', 10), ('MAISON15', 15), ('ATELIER20', 20)`);
+    await conn.query(`INSERT IGNORE INTO ${DB}.coupons (code, discount_pct) VALUES ('WELCOME10', 10), ('MAISON15', 15), ('ATELIER20', 20)`);
     console.log("Seeded coupons.");
 
     // Seed demo orders for demo user
-    const [users] = await conn.query(`SELECT id FROM maison_db.users WHERE email = 'user@maison.com'`);
+    const [users] = await conn.query(`SELECT id FROM ${DB}.users WHERE email = 'user@maison.com'`);
     if (users.length > 0) {
       const userId = users[0].id;
-      const [existingOrders] = await conn.query(`SELECT id FROM maison_db.orders WHERE user_id = ? LIMIT 1`, [userId]);
+      const [existingOrders] = await conn.query(`SELECT id FROM ${DB}.orders WHERE user_id = ? LIMIT 1`, [userId]);
       if (existingOrders.length === 0) {
-        await conn.query(`INSERT INTO maison_db.orders (order_number, user_id, status, subtotal, shipping, discount, total, tracking_number) VALUES
+        await conn.query(`INSERT INTO ${DB}.orders (order_number, user_id, status, subtotal, shipping, discount, total, tracking_number) VALUES
           ('ORD-20260301', ?, 'delivered', 480, 0, 0, 480, 'MSN-TRK-8891027'),
           ('ORD-20260412', ?, 'shipped', 715, 0, 71.50, 643.50, 'MSN-TRK-9920134'),
           ('ORD-20260428', ?, 'processing', 540, 0, 0, 540, NULL)
         `, [userId, userId, userId]);
 
-        const [orders] = await conn.query(`SELECT id, order_number FROM maison_db.orders WHERE user_id = ?`, [userId]);
+        const [orders] = await conn.query(`SELECT id, order_number FROM ${DB}.orders WHERE user_id = ?`, [userId]);
         for (const order of orders) {
           if (order.order_number === 'ORD-20260301') {
-            await conn.query(`INSERT INTO maison_db.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Atelier Tote', 'Cognac', 'Medium', 1, 480)`, [order.id]);
+            await conn.query(`INSERT INTO ${DB}.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Atelier Tote', 'Cognac', 'Medium', 1, 480)`, [order.id]);
           } else if (order.order_number === 'ORD-20260412') {
-            await conn.query(`INSERT INTO maison_db.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Voyager Backpack', 'Olive', 'One size', 1, 395), (?, 'Petite Crossbody', 'Bordeaux', 'One size', 1, 320)`, [order.id, order.id]);
+            await conn.query(`INSERT INTO ${DB}.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Voyager Backpack', 'Olive', 'One size', 1, 395), (?, 'Petite Crossbody', 'Bordeaux', 'One size', 1, 320)`, [order.id, order.id]);
           } else if (order.order_number === 'ORD-20260428') {
-            await conn.query(`INSERT INTO maison_db.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Bureau Briefcase', 'Espresso', 'Standard', 1, 540)`, [order.id]);
+            await conn.query(`INSERT INTO ${DB}.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Bureau Briefcase', 'Espresso', 'Standard', 1, 540)`, [order.id]);
           }
         }
         console.log("Seeded demo orders.");
@@ -292,7 +301,7 @@ async function init() {
     }
 
     console.log("\nDatabase initialized successfully!");
-    console.log("   Database: maison_db");
+    console.log(`   Database: ${env.database.name}`);
     console.log("   Admin:    admin@maison.com / admin123");
     console.log("   User:     user@maison.com / user123\n");
   } catch (err) {
