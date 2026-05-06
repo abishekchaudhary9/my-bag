@@ -28,6 +28,8 @@ export default function Header() {
   useEffect(() => {
     if (authState.isAuthenticated) {
       notificationsApi.get().then(d => setNotifications(d.notifications)).catch(() => {});
+    } else {
+      setNotifications([]);
     }
   }, [authState.isAuthenticated]);
 
@@ -65,6 +67,7 @@ export default function Header() {
     ? products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 5)
     : [];
   const iconButtonClass = "flex h-9 w-9 shrink-0 items-center justify-center hover:text-accent transition-colors max-[360px]:h-8 max-[360px]:w-8";
+  const canUseWishlist = authState.isAuthenticated && !isAdmin;
 
   return (
     <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md hairline">
@@ -237,14 +240,16 @@ export default function Header() {
             )}
           </div>
 
-          <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
-            <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
-            {state.wishlist.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
-                {state.wishlist.length}
-              </span>
-            )}
-          </Link>
+          {canUseWishlist && (
+            <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
+              <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
+              {state.wishlist.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
+                  {state.wishlist.length}
+                </span>
+              )}
+            </Link>
+          )}
           <Link to="/cart" aria-label="Cart" className={`${iconButtonClass} relative`}>
             <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
             {totals.count > 0 && (

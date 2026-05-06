@@ -30,18 +30,20 @@ type Action =
   | { type: "SAVE_LATER"; key: string }
   | { type: "MOVE_TO_CART"; key: string }
   | { type: "WISH_TOGGLE"; product: Product }
-  | { type: "WISH_MERGE"; ids: string[]; items: Product[] }
+  | { type: "WISH_SET"; ids: string[]; items: Product[] }
   | { type: "VIEWED"; id: string }
   | { type: "COUPON"; code: string }
   | { type: "COUPON_CLEAR" }
   | { type: "CLEAR_CART" }
-  | { type: "HYDRATE"; state: State };
+  | { type: "HYDRATE"; state: State }
+  | { type: "RESET" };
 
 const KEY = "maison.store.v1";
 const initial: State = { cart: [], saved: [], wishlist: [], wishlistItems: [], recent: [] };
 
 const itemKey = (i: CartItem) => `${i.productId}-${i.color}-${i.size}`;
 const productId = (id: string | number) => String(id);
+const storeKeyForUser = (userId: string | number) => `${KEY}.${userId}`;
 const normalizeCartItem = (item: CartItem): CartItem => ({ ...item, image: resolveAssetUrl(item.image) });
 const normalizeProduct = (product: Product): Product => ({
   ...product,
@@ -51,6 +53,8 @@ const normalizeProduct = (product: Product): Product => ({
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case "RESET":
+      return initial;
     case "HYDRATE":
       return {
         ...initial,
@@ -108,19 +112,11 @@ function reducer(state: State, action: Action): State {
           : [product, ...state.wishlistItems.filter((item) => item.id !== product.id)],
       };
     }
-    case "WISH_MERGE": {
-      const remoteIds = action.ids.map(productId);
-      const remoteItems = action.items.map(normalizeProduct);
+    case "WISH_SET": {
       return {
         ...state,
-        wishlist: [
-          ...remoteIds,
-          ...state.wishlist.filter((id) => !remoteIds.includes(id)),
-        ],
-        wishlistItems: [
-          ...remoteItems,
-          ...state.wishlistItems.filter((item) => !remoteIds.includes(item.id)),
-        ],
+        wishlist: action.ids.map(productId),
+        wishlistItems: action.items.map(normalizeProduct),
       };
     }
     case "VIEWED":
@@ -165,27 +161,44 @@ const StoreCtx = createContext<Ctx | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
   const { state: authState, isAdmin } = useAuth();
+  const activeCustomerId = authState.isAuthenticated && !isAdmin ? authState.user?.id : null;
 
   useEffect(() => {
+    if (authState.loading) return;
+
+    try { localStorage.removeItem(KEY); } catch {}
+
+    if (!activeCustomerId) {
+      dispatch({ type: "RESET" });
+      return;
+    }
+
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(storeKeyForUser(activeCustomerId));
       if (raw) dispatch({ type: "HYDRATE", state: { ...initial, ...JSON.parse(raw) } });
+      else dispatch({ type: "RESET" });
     } catch {}
-  }, []);
+  }, [activeCustomerId, authState.loading]);
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
-  }, [state]);
+    if (!activeCustomerId) return;
+    try {
+      localStorage.setItem(
+        storeKeyForUser(activeCustomerId),
+        JSON.stringify({ ...state, wishlist: [], wishlistItems: [] })
+      );
+    } catch {}
+  }, [activeCustomerId, state]);
 
   useEffect(() => {
-    if (!authState.isAuthenticated || isAdmin) return;
+    if (!activeCustomerId) return;
 
     wishlistApi.get()
       .then(({ productIds, wishlist }) => {
-        dispatch({ type: "WISH_MERGE", ids: productIds, items: wishlist as Product[] });
+        dispatch({ type: "WISH_SET", ids: productIds, items: wishlist as Product[] });
       })
       .catch(() => {});
-  }, [authState.isAuthenticated, authState.user?.id, isAdmin]);
+  }, [activeCustomerId]);
 
   const totals = useMemo(() => {
     const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
@@ -217,16 +230,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveForLater: (key) => dispatch({ type: "SAVE_LATER", key }),
     moveToCart: (key) => dispatch({ type: "MOVE_TO_CART", key }),
     toggleWish: (product) => {
+      if (!activeCustomerId) return;
+
       const id = productId(product.id);
       const shouldAdd = !state.wishlist.includes(id);
       dispatch({ type: "WISH_TOGGLE", product });
 
-      if (authState.isAuthenticated && !isAdmin && /^\d+$/.test(id)) {
+      if (/^\d+$/.test(id)) {
         const request = shouldAdd ? wishlistApi.toggle(id) : wishlistApi.remove(id);
         request.catch(() => dispatch({ type: "WISH_TOGGLE", product }));
       }
     },
-    isWished: (id) => state.wishlist.includes(productId(id)),
+    isWished: (id) => Boolean(activeCustomerId) && state.wishlist.includes(productId(id)),
     markViewed: (id) => dispatch({ type: "VIEWED", id }),
     applyCoupon: (code) => {
       const map: Record<string, number> = { WELCOME10: 10, MAISON15: 15, ATELIER20: 20 };

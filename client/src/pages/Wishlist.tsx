@@ -4,6 +4,7 @@ import Layout from "@/components/site/Layout";
 import ProductCard from "@/components/shop/ProductCard";
 import { Product, products } from "@/data/products";
 import { useStore } from "@/context/StoreContext";
+import { useAuth } from "@/context/AuthContext";
 import { productsApi } from "@/lib/api";
 import { Check, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ function isProduct(value: Product | undefined): value is Product {
 
 export default function Wishlist() {
   const { state, addToCart } = useStore();
+  const { state: authState, isAdmin } = useAuth();
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const navigate = useNavigate();
@@ -94,6 +96,43 @@ export default function Wishlist() {
     const added = addProductsToCart(selectedItems);
     if (added > 0) navigate("/cart");
   };
+
+  if (!authState.isAuthenticated) {
+    return (
+      <Layout>
+        <div className="container-luxe py-32 text-center animate-fade-up">
+          <div className="eyebrow mb-4">Saved</div>
+          <h1 className="font-display text-5xl md:text-6xl">Sign in to view your wishlist.</h1>
+          <p className="mt-5 text-muted-foreground max-w-md mx-auto">
+            Wishlist items are private to each account.
+          </p>
+          <Link
+            to="/login"
+            className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
+          >
+            Sign In
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <Layout>
+        <div className="container-luxe py-32 text-center animate-fade-up">
+          <div className="eyebrow mb-4">Restricted</div>
+          <h1 className="font-display text-5xl md:text-6xl">Admin accounts do not use wishlists.</h1>
+          <Link
+            to="/admin"
+            className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
+          >
+            Go to Admin Panel
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
