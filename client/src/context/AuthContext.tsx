@@ -107,7 +107,17 @@ type AuthCtx = {
   googleLogin: () => AuthResult;
   sendPhoneLoginCode: (phone: string, recaptchaContainerId: string) => AuthResult;
   confirmPhoneLogin: (code: string) => AuthResult;
-  signup: (data: { email: string; password: string; firstName: string; lastName: string }) => AuthResult;
+  signup: (data: { 
+    email: string; 
+    password: string; 
+    firstName: string; 
+    lastName: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    zip?: string;
+    country?: string;
+  }) => AuthResult;
   sendPasswordReset: (email: string) => AuthResult;
   sendPhonePasswordResetCode: (phone: string, recaptchaContainerId: string) => AuthResult;
   confirmPhonePasswordReset: (code: string, newPassword: string) => AuthResult;
@@ -131,7 +141,7 @@ function authNotConfigured() {
   };
 }
 
-async function exchangeFirebaseUser(profile?: { firstName?: string; lastName?: string; phone?: string }) {
+async function exchangeFirebaseUser(profile?: any) {
   const auth = getConfiguredFirebaseAuth();
   const currentUser = auth.currentUser;
 
@@ -306,17 +316,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: getErrorMessage(err, "Invalid verification code") };
       }
     },
-    signup: async ({ email, password, firstName, lastName }) => {
+    signup: async (data) => {
       if (!isFirebaseConfigured) return authNotConfigured();
 
       try {
         const auth = getConfiguredFirebaseAuth();
-        const result = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+        const result = await createUserWithEmailAndPassword(auth, data.email.trim().toLowerCase(), data.password);
         await updateFirebaseProfile(result.user, {
-          displayName: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          displayName: `${data.firstName.trim()} ${data.lastName.trim()}`.trim(),
         });
-        await authApi.sendOtp(email.trim().toLowerCase());
-        await finishFirebaseLogin({ firstName, lastName });
+        
+        // The automatic login triggered by Firebase will cause onAuthStateChanged to run,
+        // which calls exchangeFirebaseUser. We pass the additional data here to ensure it's saved.
+        await finishFirebaseLogin({
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          phone: data.phone,
+          street: data.street,
+          city: data.city,
+          zip: data.zip,
+          country: data.country || "Nepal"
+        });
+
+        // Send OTP immediately
+        await authApi.sendOtp(data.email.trim().toLowerCase());
+        
         return { success: true };
       } catch (err: unknown) {
         return { success: false, error: getErrorMessage(err, "Signup failed") };

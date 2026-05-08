@@ -70,11 +70,11 @@ export default function Verify() {
             <div className="h-16 w-16 bg-accent/10 text-accent rounded-full grid place-items-center mx-auto mb-6">
               <ShieldCheck className="h-8 w-8" strokeWidth={1.5} />
             </div>
-            <div className="eyebrow mb-4">Security First</div>
-            <h1 className="font-display text-4xl md:text-5xl">Verify Email</h1>
+            <div className="eyebrow mb-4">Complete Your Account</div>
+            <h1 className="font-display text-4xl md:text-5xl">Verify Your Email</h1>
             <p className="mt-4 text-muted-foreground text-sm">
               We've sent a 6-digit verification code to <span className="text-foreground font-medium">{state.user.email}</span>.
-              Please check your inbox (and spam folder).
+              Enter it below to unlock your account features.
             </p>
           </div>
 
