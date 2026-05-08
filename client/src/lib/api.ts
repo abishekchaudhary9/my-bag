@@ -136,6 +136,12 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     }),
 
+  firebaseLogin: (idToken: string, profile?: { firstName?: string; lastName?: string; phone?: string }) =>
+    request<{ user: any; token: string }>("/auth/firebase", {
+      method: "POST",
+      body: JSON.stringify({ idToken, profile }),
+    }),
+
   googleLogin: (credential: string) =>
     request<{ user: any; token: string }>("/auth/google", {
       method: "POST",
@@ -160,6 +166,12 @@ export const authApi = {
     request<{ message: string }>("/auth/password", {
       method: "PUT",
       body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
+  findEmailByPhone: (phone: string) =>
+    request<{ email: string }>("/auth/phone/email", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
     }),
 };
 

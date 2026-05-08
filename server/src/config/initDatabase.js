@@ -4,7 +4,6 @@
  * Run with: npm run db:init
  */
 const mysql = require("mysql2/promise");
-const bcrypt = require("bcryptjs");
 const env = require("./env");
 
 function escapeIdentifier(value) {
@@ -23,6 +22,7 @@ USE ${DB};
 -- Users
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  firebase_uid VARCHAR(128) DEFAULT NULL UNIQUE,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   first_name VARCHAR(100) NOT NULL,
@@ -204,6 +204,18 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 `;
 
+async function ensureColumn(conn, tableName, columnName, definition) {
+  const [rows] = await conn.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [env.database.name, tableName, columnName]
+  );
+
+  if (rows.length === 0) {
+    await conn.query(`ALTER TABLE ${DB}.${tableName} ADD COLUMN ${definition}`);
+  }
+}
+
 async function init() {
   let conn;
   try {
@@ -219,23 +231,8 @@ async function init() {
 
     console.log("Connected to MySQL. Creating database and tables...");
     await conn.query(SCHEMA);
+    await ensureColumn(conn, "users", "firebase_uid", "firebase_uid VARCHAR(128) DEFAULT NULL UNIQUE AFTER id");
     console.log("Tables created successfully.");
-
-    // Seed admin user
-    const adminHash = await bcrypt.hash("admin123", 10);
-    const userHash = await bcrypt.hash("user123", 10);
-
-    await conn.query(`
-      INSERT IGNORE INTO ${DB}.users (email, password_hash, first_name, last_name, role, phone)
-      VALUES ('admin@maison.com', ?, 'Lucien', 'Beaumont', 'admin', '+39 055 123 4567')
-    `, [adminHash]);
-
-    await conn.query(`
-      INSERT IGNORE INTO ${DB}.users (email, password_hash, first_name, last_name, role, phone, street, city, state, zip, country)
-      VALUES ('user@maison.com', ?, 'Chiara', 'Rosetti', 'user', '+1 212 555 0100', '42 Mercer St', 'New York', 'NY', '10013', 'United States')
-    `, [userHash]);
-
-    console.log("Seeded admin and demo user.");
 
     // Seed products
     const productsData = [
@@ -274,36 +271,10 @@ async function init() {
     await conn.query(`INSERT IGNORE INTO ${DB}.coupons (code, discount_pct) VALUES ('WELCOME10', 10), ('MAISON15', 15), ('ATELIER20', 20)`);
     console.log("Seeded coupons.");
 
-    // Seed demo orders for demo user
-    const [users] = await conn.query(`SELECT id FROM ${DB}.users WHERE email = 'user@maison.com'`);
-    if (users.length > 0) {
-      const userId = users[0].id;
-      const [existingOrders] = await conn.query(`SELECT id FROM ${DB}.orders WHERE user_id = ? LIMIT 1`, [userId]);
-      if (existingOrders.length === 0) {
-        await conn.query(`INSERT INTO ${DB}.orders (order_number, user_id, status, subtotal, shipping, discount, total, tracking_number) VALUES
-          ('ORD-20260301', ?, 'delivered', 480, 0, 0, 480, 'MSN-TRK-8891027'),
-          ('ORD-20260412', ?, 'shipped', 715, 0, 71.50, 643.50, 'MSN-TRK-9920134'),
-          ('ORD-20260428', ?, 'processing', 540, 0, 0, 540, NULL)
-        `, [userId, userId, userId]);
-
-        const [orders] = await conn.query(`SELECT id, order_number FROM ${DB}.orders WHERE user_id = ?`, [userId]);
-        for (const order of orders) {
-          if (order.order_number === 'ORD-20260301') {
-            await conn.query(`INSERT INTO ${DB}.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Atelier Tote', 'Cognac', 'Medium', 1, 480)`, [order.id]);
-          } else if (order.order_number === 'ORD-20260412') {
-            await conn.query(`INSERT INTO ${DB}.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Voyager Backpack', 'Olive', 'One size', 1, 395), (?, 'Petite Crossbody', 'Bordeaux', 'One size', 1, 320)`, [order.id, order.id]);
-          } else if (order.order_number === 'ORD-20260428') {
-            await conn.query(`INSERT INTO ${DB}.order_items (order_id, product_name, color, size, qty, price) VALUES (?, 'Bureau Briefcase', 'Espresso', 'Standard', 1, 540)`, [order.id]);
-          }
-        }
-        console.log("Seeded demo orders.");
-      }
-    }
-
     console.log("\nDatabase initialized successfully!");
     console.log(`   Database: ${env.database.name}`);
-    console.log("   Admin:    admin@maison.com / admin123");
-    console.log("   User:     user@maison.com / user123\n");
+    console.log("   Auth:     Firebase users are synced on sign-in.");
+    console.log("   Admin:    Set ADMIN_EMAILS to the Firebase email(s) allowed into /admin.\n");
   } catch (err) {
     console.error("Database initialization failed:", err.message);
     throw err;

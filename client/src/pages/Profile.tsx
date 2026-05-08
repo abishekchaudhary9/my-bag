@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Package, Heart, MapPin, Settings, LogOut, Camera, Shield, Bell, Eye } from "lucide-react";
+import { User, Package, Heart, MapPin, Settings, LogOut, Camera, Shield, Bell, Eye, ChevronDown } from "lucide-react";
 import Layout from "@/components/site/Layout";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, type User as AuthUser } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
-import { authApi, productsApi } from "@/lib/api";
+import { productsApi } from "@/lib/api";
 import { Product, products } from "@/data/products";
 import { toast } from "sonner";
 import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
@@ -12,7 +12,7 @@ import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } fr
 type Tab = "overview" | "settings" | "addresses" | "security";
 
 export default function Profile() {
-  const { state, logout, updateProfile, isAdmin } = useAuth();
+  const { state, logout, updateProfile, changePassword, isAdmin } = useAuth();
   const { state: storeState } = useStore();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
@@ -71,6 +71,7 @@ export default function Profile() {
 
   const user = state.user;
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  const contactLabel = user.email || user.phone || "No contact saved";
 
   const handleLogout = () => {
     logout();
@@ -99,7 +100,7 @@ export default function Profile() {
           <div>
             <h1 className="font-display text-3xl md:text-4xl">{user.firstName} {user.lastName}</h1>
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-sm text-muted-foreground">{contactLabel}</span>
               {isAdmin && (
                 <span className="text-[10px] uppercase tracking-[0.18em] px-2 py-0.5 bg-accent text-accent-foreground">Admin</span>
               )}
@@ -121,7 +122,20 @@ export default function Profile() {
 
       {/* Tabs */}
       <section className="container-luxe pb-24">
-        <div className="flex gap-1 border-b border-border mb-8 overflow-x-auto">
+        <div className="relative mb-8 md:hidden">
+          <select
+            value={tab}
+            onChange={(event) => setTab(event.target.value as Tab)}
+            className="w-full appearance-none border border-border bg-background px-4 py-3 pr-10 text-[13px] uppercase tracking-[0.14em] text-foreground focus:border-foreground focus:outline-none"
+          >
+            {tabs.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
+        </div>
+
+        <div className="mb-8 hidden gap-1 border-b border-border md:flex">
           {tabs.map((t) => {
             const Icon = t.icon;
             return (
@@ -199,7 +213,7 @@ export default function Profile() {
         {tab === "addresses" && <AddressesTab user={user} onUpdate={updateProfile} />}
 
         {/* SECURITY TAB */}
-        {tab === "security" && <SecurityTab />}
+        {tab === "security" && <SecurityTab onChangePassword={changePassword} />}
 
         {/* Logout */}
         <div className="mt-12 pt-8 border-t border-border">
@@ -227,11 +241,11 @@ function QuickStat({ icon: Icon, label, value, to, accent }: { icon: typeof User
   return to ? <Link to={to}>{inner}</Link> : inner;
 }
 
-function ProfileSettings({ user, onUpdate }: { user: any; onUpdate: (u: any) => void }) {
+function ProfileSettings({ user, onUpdate }: { user: AuthUser; onUpdate: (u: Partial<AuthUser>) => Promise<void> }) {
   const [form, setForm] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
-    email: user.email,
+    email: user.email || "",
     phone: user.phone || "",
   });
 
@@ -241,7 +255,7 @@ function ProfileSettings({ user, onUpdate }: { user: any; onUpdate: (u: any) => 
       toast.error("First and last name are required");
       return;
     }
-    if (!isValidEmail(form.email)) {
+    if (form.email && !isValidEmail(form.email)) {
       toast.error("Enter a valid email address");
       return;
     }
@@ -284,7 +298,7 @@ function ProfileSettings({ user, onUpdate }: { user: any; onUpdate: (u: any) => 
   );
 }
 
-function AddressesTab({ user, onUpdate }: { user: any; onUpdate: (u: any) => void }) {
+function AddressesTab({ user, onUpdate }: { user: AuthUser; onUpdate: (u: Partial<AuthUser>) => Promise<void> }) {
   const [form, setForm] = useState({
     street: user.address?.street ?? "",
     city: user.address?.city ?? "",
@@ -331,7 +345,7 @@ function AddressesTab({ user, onUpdate }: { user: any; onUpdate: (u: any) => voi
   );
 }
 
-function SecurityTab() {
+function SecurityTab({ onChangePassword }: { onChangePassword: (currentPassword: string, newPassword: string) => Promise<void> }) {
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -349,13 +363,13 @@ function SecurityTab() {
       return;
     }
     try {
-      await authApi.changePassword(currentPw, newPw);
+      await onChangePassword(currentPw, newPw);
       toast.success("Password updated");
       setCurrentPw("");
       setNewPw("");
       setConfirmPw("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update password");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update password");
     }
   };
 

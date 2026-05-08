@@ -1,13 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { OAuth2Client } = require("google-auth-library");
 const pool = require("../config/database");
 const env = require("../config/env");
+const { getFirebaseAuth } = require("../config/firebase");
 const { mapUser } = require("../models/userModel");
 const createHttpError = require("../utils/httpError");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
-
-const googleClient = new OAuth2Client(env.googleClientId);
 
 function signToken(user) {
   return jwt.sign(
@@ -17,104 +15,126 @@ function signToken(user) {
   );
 }
 
-async function signup({ email, password, firstName, lastName }) {
-  if (!email || !password || !firstName || !lastName) {
-    throw createHttpError(400, "All fields are required.");
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!isValidEmail(normalizedEmail)) {
-    throw createHttpError(400, "Enter a valid email address.");
-  }
-
-  if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-    throw createHttpError(400, "Password must be at least 8 characters and include one uppercase letter and one number.");
-  }
-
-  const [existing] = await pool.query("SELECT id FROM users WHERE email = ?", [normalizedEmail]);
-  if (existing.length > 0) {
-    throw createHttpError(409, "An account with this email already exists.");
-  }
-
-  const hash = await bcrypt.hash(password, 10);
-  const [result] = await pool.query(
-    "INSERT INTO users (email, password_hash, first_name, last_name, role, country) VALUES (?, ?, ?, ?, 'user', ?)",
-    [normalizedEmail, hash, firstName.trim(), lastName.trim(), DEFAULT_COUNTRY]
-  );
-
-  const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
-  return { user: mapUser(rows[0]), token: signToken(rows[0]) };
+function firebaseOnlyError() {
+  return createHttpError(410, "Password authentication has moved to Firebase.");
 }
 
-async function login({ email, password }) {
-  if (!email || !password) {
-    throw createHttpError(400, "Email and password are required.");
+function parseName(displayName, fallbackFirst = "Maison", fallbackLast = "Customer") {
+  const parts = String(displayName || "").trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return { firstName: fallbackFirst, lastName: fallbackLast };
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!isValidEmail(normalizedEmail)) {
-    throw createHttpError(400, "Enter a valid email address.");
-  }
-
-  const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
-  if (rows.length === 0) {
-    throw createHttpError(401, "Invalid email or password.");
-  }
-
-  const user = rows[0];
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) {
-    throw createHttpError(401, "Invalid email or password.");
-  }
-
-  return { user: mapUser(user), token: signToken(user) };
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" ") || fallbackLast,
+  };
 }
 
-async function loginWithGoogle({ credential }) {
-  if (!env.googleClientId) {
-    const error = createHttpError(500, "Google login is not configured.");
-    error.expose = true;
-    throw error;
+function phoneProxyEmail(uid) {
+  return `phone-${uid}@phone.maison.local`;
+}
+
+function isAdminEmail(email) {
+  return env.adminEmails.includes(String(email || "").trim().toLowerCase());
+}
+
+async function signup() {
+  throw firebaseOnlyError();
+}
+
+async function login() {
+  throw firebaseOnlyError();
+}
+
+async function loginWithGoogle() {
+  throw firebaseOnlyError();
+}
+
+async function loginWithFirebase({ idToken, profile = {} }) {
+  if (!idToken) {
+    throw createHttpError(400, "Firebase ID token is required.");
   }
 
-  if (!credential) {
-    throw createHttpError(400, "Google credential is required.");
-  }
-
-  let ticket;
+  let decoded;
+  let firebaseUser;
   try {
-    ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: env.googleClientId,
-    });
+    const firebaseAuth = getFirebaseAuth();
+    decoded = await firebaseAuth.verifyIdToken(idToken);
+    firebaseUser = await firebaseAuth.getUser(decoded.uid);
   } catch {
-    throw createHttpError(401, "Google login could not be verified.");
-  }
-  const payload = ticket.getPayload();
-
-  if (!payload || !payload.email || !payload.email_verified) {
-    throw createHttpError(401, "Google account email could not be verified.");
+    throw createHttpError(401, "Firebase sign-in could not be verified.");
   }
 
-  const normalizedEmail = payload.email.trim().toLowerCase();
-  const [existing] = await pool.query("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
+  const email = String(decoded.email || firebaseUser.email || "").trim().toLowerCase();
+  const dbEmail = email || phoneProxyEmail(decoded.uid);
+  const rawPhone = decoded.phone_number || firebaseUser.phoneNumber || profile.phone || "";
+  const phone = rawPhone ? formatNepalPhone(rawPhone) : null;
+  const avatar = decoded.picture || firebaseUser.photoURL || null;
+  const profileName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
+  const firebaseName = decoded.name || firebaseUser.displayName || "";
+  const name = parseName(profileName || firebaseName, phone ? "Phone" : "Maison", "Customer");
+  const firstName = String(profile.firstName || name.firstName).trim();
+  const lastName = String(profile.lastName || name.lastName).trim();
+  const role = isAdminEmail(email) ? "admin" : "user";
 
-  if (existing.length > 0) {
-    return { user: mapUser(existing[0]), token: signToken(existing[0]) };
+  if (phone && !isValidNepalPhone(phone)) {
+    throw createHttpError(400, "Enter a valid Nepal mobile number.");
   }
 
-  const fallbackName = normalizedEmail.split("@")[0];
-  const firstName = payload.given_name || payload.name?.split(" ")[0] || fallbackName;
-  const lastName = payload.family_name || payload.name?.split(" ").slice(1).join(" ") || "Customer";
-  const hash = await bcrypt.hash(`google:${payload.sub}:${Date.now()}`, 10);
+  let rows = [];
+  [rows] = await pool.query("SELECT * FROM users WHERE firebase_uid = ?", [decoded.uid]);
+
+  if (rows.length === 0 && email) {
+    [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+  }
+
+  if (rows.length === 0 && phone) {
+    [rows] = await pool.query("SELECT * FROM users WHERE phone = ?", [phone]);
+  }
+
+  if (rows.length > 0) {
+    const existing = rows[0];
+    const nextEmail = email || existing.email || dbEmail;
+    const nextFirstName = firstName || existing.first_name;
+    const nextLastName = lastName || existing.last_name;
+
+    await pool.query(
+      `UPDATE users
+       SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, phone = COALESCE(?, phone), avatar = COALESCE(?, avatar)
+       WHERE id = ?`,
+      [decoded.uid, nextEmail, nextFirstName, nextLastName, role, phone, avatar, existing.id]
+    );
+
+    const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [existing.id]);
+    const updatedUser = updatedRows[0];
+    return { user: mapUser(updatedUser), token: signToken(updatedUser) };
+  }
 
   const [result] = await pool.query(
-    "INSERT INTO users (email, password_hash, first_name, last_name, role, avatar, country) VALUES (?, ?, ?, ?, 'user', ?, ?)",
-    [normalizedEmail, hash, firstName.trim(), lastName.trim(), payload.picture || null, DEFAULT_COUNTRY]
+    `INSERT INTO users (firebase_uid, email, password_hash, first_name, last_name, role, phone, avatar, country)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [decoded.uid, dbEmail, `firebase:${decoded.uid}`, firstName, lastName, role, phone, avatar, DEFAULT_COUNTRY]
   );
 
-  const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
-  return { user: mapUser(rows[0]), token: signToken(rows[0]) };
+  const [createdRows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
+  const createdUser = createdRows[0];
+  return { user: mapUser(createdUser), token: signToken(createdUser) };
+}
+
+async function findEmailByPhone({ phone }) {
+  if (!phone || !isValidNepalPhone(phone)) {
+    throw createHttpError(400, "Enter a valid Nepal mobile number.");
+  }
+
+  const formattedPhone = formatNepalPhone(phone);
+  const [rows] = await pool.query("SELECT email FROM users WHERE phone = ? LIMIT 1", [formattedPhone]);
+  if (rows.length === 0 || /^phone-[^@]+@phone\.maison\.local$/i.test(rows[0].email)) {
+    throw createHttpError(404, "No email account is linked to this phone number.");
+  }
+
+  return { email: rows[0].email };
 }
 
 async function getCurrentUser(userId) {
@@ -169,6 +189,10 @@ async function updatePassword(userId, { currentPassword, newPassword }) {
     throw createHttpError(404, "User not found");
   }
 
+  if (String(rows[0].password_hash || "").startsWith("firebase:")) {
+    throw createHttpError(400, "Use Firebase to change this password.");
+  }
+
   const valid = await bcrypt.compare(currentPassword, rows[0].password_hash);
   if (!valid) {
     throw createHttpError(401, "Current password is incorrect.");
@@ -183,6 +207,8 @@ module.exports = {
   signup,
   login,
   loginWithGoogle,
+  loginWithFirebase,
+  findEmailByPhone,
   getCurrentUser,
   updateProfile,
   updatePassword,
