@@ -1,6 +1,6 @@
 {
-  "public": false,
+  "public": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "client/$1" }
+    { "source": "/(.*)", "destination": "/client/dist/$1" }
   ]
 }
