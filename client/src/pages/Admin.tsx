@@ -304,6 +304,42 @@ export default function Admin() {
     fetchCoupons();
   }, [isAdmin, fetchStats, fetchOrders, fetchCustomers, fetchProducts, fetchFeedback, fetchNotifications, fetchCoupons]);
 
+  // Real-time: Listen for new orders to refresh dashboard content
+  const { socket: ioSocket } = useAuth();
+
+  useEffect(() => {
+    if (!ioSocket || !isAdmin) return;
+
+    ioSocket.on("new_order", () => {
+      // Refresh key dashboard data
+      fetchStats();
+      fetchOrders();
+      fetchNotifications();
+    });
+
+    ioSocket.on("new_message", () => {
+      fetchNotifications();
+      // If we had a fetchMessages, we'd call it here
+    });
+
+    ioSocket.on("new_review", () => {
+      fetchFeedback();
+      fetchNotifications();
+    });
+
+    ioSocket.on("new_question", () => {
+      fetchFeedback();
+      fetchNotifications();
+    });
+
+    return () => {
+      ioSocket.off("new_order");
+      ioSocket.off("new_message");
+      ioSocket.off("new_review");
+      ioSocket.off("new_question");
+    };
+  }, [ioSocket, isAdmin, fetchStats, fetchOrders, fetchNotifications, fetchFeedback]);
+
   /* ─── Auth guard ────────────────────────────────────── */
   if (state.loading) {
     return (

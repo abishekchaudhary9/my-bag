@@ -1,10 +1,14 @@
 const pool = require("../config/database");
+const { emitEvent } = require("../lib/socket");
 
 async function createNotification(userId, title, message, link) {
   await pool.query(
     "INSERT INTO notifications (user_id, title, message, link) VALUES (?, ?, ?, ?)",
     [userId, title, message, link]
   );
+
+  // Real-time: Notify the user
+  emitEvent(`user_${userId}`, "notification", { title, message, link });
 }
 
 async function listNotifications(userId) {

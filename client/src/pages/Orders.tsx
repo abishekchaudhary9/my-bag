@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Package, Truck, Check, X, Eye, CheckCircle2, Circle } from "lucide-react";
 import Layout from "@/components/site/Layout";
@@ -11,7 +12,19 @@ const STATUS_MAP = {
 };
 
 export default function Orders() {
-  const { state, isAdmin } = useAuth();
+  const { state, isAdmin, socket, fetchOrders } = useAuth();
+
+  useEffect(() => {
+    if (!socket || !state.isAuthenticated) return;
+
+    socket.on("order_update", () => {
+      fetchOrders();
+    });
+
+    return () => {
+      socket.off("order_update");
+    };
+  }, [socket, state.isAuthenticated, fetchOrders]);
 
   if (isAdmin) {
     return (

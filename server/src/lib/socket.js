@@ -24,6 +24,16 @@ function initSocket(server, allowedOrigins) {
       console.log("[Socket] Admin joined the management channel");
     });
 
+    socket.on("join_product", (productId) => {
+      socket.join(`product:${productId}`);
+      console.log(`[Socket] Client joined room for product:${productId}`);
+    });
+
+    socket.on("leave_product", (productId) => {
+      socket.leave(`product:${productId}`);
+      console.log(`[Socket] Client left room for product:${productId}`);
+    });
+
     socket.on("disconnect", () => {
       console.log(`[Socket] Client disconnected: ${socket.id}`);
     });

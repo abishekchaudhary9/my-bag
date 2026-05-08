@@ -211,6 +211,13 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, code }),
     }),
+
+  notifications: () => request<{ notifications: any[] }>("/notifications"),
+
+  markNotificationsRead: () =>
+    request<{ message: string }>("/notifications/read-all", {
+      method: "PUT",
+    }),
 };
 
 // ─── Products ────────────────────────────────────────────────

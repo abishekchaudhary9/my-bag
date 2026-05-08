@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, ReactNode, useCallback } from "react";
 import { Product } from "@/data/products";
 import { useAuth } from "@/context/AuthContext";
-import { resolveAssetUrl, wishlistApi } from "@/lib/api";
+import { resolveAssetUrl, wishlistApi, cartApi } from "@/lib/api";
 
 export type CartItem = {
   productId: string;
@@ -169,35 +169,41 @@ const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
-  const { state: authState, isAdmin } = useAuth();
+  const { state: authState, isAdmin, socket } = useAuth();
   const activeCustomerId = authState.isAuthenticated && !isAdmin ? authState.user?.id : null;
+
+  const fetchCart = useCallback(async () => {
+    if (!activeCustomerId) return;
+    try {
+      const { cart } = await cartApi.get();
+      dispatch({ type: "HYDRATE", state: { ...initial, cart } });
+    } catch {
+      return;
+    }
+  }, [activeCustomerId]);
 
   useEffect(() => {
     if (authState.loading) return;
-
-    try { localStorage.removeItem(KEY); } catch {}
 
     if (!activeCustomerId) {
       dispatch({ type: "RESET" });
       return;
     }
 
-    try {
-      const raw = localStorage.getItem(storeKeyForUser(activeCustomerId));
-      if (raw) dispatch({ type: "HYDRATE", state: { ...initial, ...JSON.parse(raw) } });
-      else dispatch({ type: "RESET" });
-    } catch {}
-  }, [activeCustomerId, authState.loading]);
+    fetchCart();
+  }, [activeCustomerId, authState.loading, fetchCart]);
 
   useEffect(() => {
-    if (!activeCustomerId) return;
-    try {
-      localStorage.setItem(
-        storeKeyForUser(activeCustomerId),
-        JSON.stringify({ ...state, wishlist: [], wishlistItems: [] })
-      );
-    } catch {}
-  }, [activeCustomerId, state]);
+    if (!socket || !activeCustomerId) return;
+
+    socket.on("cart_update", () => {
+      fetchCart();
+    });
+
+    return () => {
+      socket.off("cart_update");
+    };
+  }, [socket, activeCustomerId, fetchCart]);
 
   useEffect(() => {
     if (!activeCustomerId) return;
@@ -220,7 +226,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Ctx = {
     state,
-    addToCart: (p, { color, size, qty = 1 }) =>
+    addToCart: (p, { color, size, qty = 1 }) => {
       dispatch({
         type: "ADD",
         item: {
@@ -233,9 +239,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           size,
           qty,
         },
-      }),
-    removeItem: (key) => dispatch({ type: "REMOVE", key }),
-    setQty: (key, qty) => dispatch({ type: "QTY", key, qty }),
+      });
+
+      if (activeCustomerId) {
+        cartApi.add(p.id, color, size, qty).catch(() => {});
+      }
+    },
+    removeItem: (key) => {
+      const item = state.cart.find((i) => itemKey(i) === key);
+      dispatch({ type: "REMOVE", key });
+      if (activeCustomerId && item?.id) {
+        cartApi.remove(Number(item.id)).catch(() => {});
+      }
+    },
+    setQty: (key, qty) => {
+      const item = state.cart.find((i) => itemKey(i) === key);
+      dispatch({ type: "QTY", key, qty });
+      if (activeCustomerId && item?.id) {
+        cartApi.updateQty(Number(item.id), qty).catch(() => {});
+      }
+    },
     saveForLater: (key) => dispatch({ type: "SAVE_LATER", key }),
     moveToCart: (key) => dispatch({ type: "MOVE_TO_CART", key }),
     toggleWish: (product) => {
@@ -271,7 +294,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return ok;
     },
     clearCoupon: () => dispatch({ type: "COUPON_CLEAR" }),
-    clearCart: () => dispatch({ type: "CLEAR_CART" }),
+    clearCart: () => {
+      dispatch({ type: "CLEAR_CART" });
+      if (activeCustomerId) {
+        cartApi.clear().catch(() => {});
+      }
+    },
     itemKey,
     totals,
   };

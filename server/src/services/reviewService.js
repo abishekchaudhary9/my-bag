@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
 const { createNotification } = require("./notificationService");
 
@@ -128,6 +129,12 @@ async function createReview(userId, productId, { rating, title, body }) {
     }
   }
 
+
+
+  // Real-time: Notify product page and admins
+  emitEvent(`product:${productId}`, "new_review", { productId });
+  emitEvent("admins", "new_review", { productId, productName: productInfo[0].name });
+
   return { message: "Review submitted successfully." };
 }
 
@@ -154,6 +161,11 @@ async function replyToReview(user, reviewId, reply) {
       `/product/${reviewData[0].slug}`
     );
   }
+
+
+
+  // Real-time: Notify product page
+  emitEvent(`product:${reviewData[0].product_id || ""}`, "review_update", { reviewId });
 
   return { message: "Reply added successfully." };
 }

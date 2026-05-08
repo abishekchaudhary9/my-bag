@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const { emitEvent } = require("../lib/socket");
 const { mapProduct } = require("../models/productModel");
 const createHttpError = require("../utils/httpError");
 
@@ -125,6 +126,13 @@ async function updateProduct(productId, data) {
   if (rows.length === 0) {
     throw createHttpError(404, "Product not found");
   }
+
+  // Real-time: Notify product page of updates
+  emitEvent(`product:${productId}`, "product_update", { productId });
+  if (stock !== undefined) {
+    emitEvent(`product:${productId}`, "stock_update", { productId, stock });
+  }
+
   return fetchFullProduct(rows[0]);
 }
 

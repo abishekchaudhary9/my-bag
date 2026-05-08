@@ -160,8 +160,9 @@ async function updateOrder(orderNumber, { status, trackingNumber }) {
     throw createHttpError(400, "Invalid status.");
   }
 
-  const [oldOrderRows] = await pool.query("SELECT user_id, status FROM orders WHERE order_number = ?", [orderNumber]);
+  const [oldOrderRows] = await pool.query("SELECT id, user_id, status FROM orders WHERE order_number = ?", [orderNumber]);
   const oldOrder = oldOrderRows[0];
+  if (!oldOrder) throw createHttpError(404, "Order not found");
 
   await pool.query(
     `UPDATE orders SET status = COALESCE(?, status), tracking_number = COALESCE(?, tracking_number)
@@ -169,8 +170,24 @@ async function updateOrder(orderNumber, { status, trackingNumber }) {
     [status, trackingNumber, orderNumber]
   );
 
+  // Stock Restoration on Cancellation
+  if (status === "cancelled" && oldOrder.status !== "cancelled") {
+    const [items] = await pool.query("SELECT product_name, qty FROM order_items WHERE order_id = ?", [oldOrder.id]);
+    for (const item of items) {
+      await pool.query(
+        "UPDATE products SET stock = stock + ? WHERE name = ?",
+        [item.qty, item.product_name]
+      );
+      // Notify product page of stock change
+      const [prod] = await pool.query("SELECT id, stock FROM products WHERE name = ?", [item.product_name]);
+      if (prod.length > 0) {
+        emitEvent(`product:${prod[0].id}`, "stock_update", { productId: prod[0].id, stock: prod[0].stock });
+      }
+    }
+  }
+
   // If status changed to delivered, notify the user
-  if (status === "delivered" && oldOrder && oldOrder.status !== "delivered") {
+  if (status === "delivered" && oldOrder.status !== "delivered") {
     await pool.query(
       "INSERT INTO notifications (user_id, title, message, link) VALUES (?, ?, ?, ?)",
       [
@@ -180,12 +197,15 @@ async function updateOrder(orderNumber, { status, trackingNumber }) {
         `/orders`,
       ]
     );
+    emitEvent(`user_${oldOrder.user_id}`, "notification", {
+      title: "Order Delivered",
+      message: `Your order #${orderNumber} has been delivered! We'd love to hear your feedback.`,
+      link: "/orders"
+    });
   }
 
   // Real-time: Notify user about the update
-  if (oldOrder) {
-    emitEvent(`user_${oldOrder.user_id}`, "order_update", { orderNumber, status, trackingNumber });
-  }
+  emitEvent(`user_${oldOrder.user_id}`, "order_update", { orderNumber, status, trackingNumber });
 
   return { message: "Order updated" };
 }
@@ -279,6 +299,7 @@ async function createNotification({ userId, title, message, link }) {
     "INSERT INTO notifications (user_id, title, message, link) VALUES (?, ?, ?, ?)",
     [userId, title, message, link || null]
   );
+  emitEvent(`user_${userId}`, "notification", { title, message, link: link || null });
   return { message: "Notification sent" };
 }
 

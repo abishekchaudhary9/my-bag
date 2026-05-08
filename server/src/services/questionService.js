@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
 const { createNotification } = require("./notificationService");
 
@@ -57,6 +58,12 @@ async function createQuestion(userId, productId, { text }) {
     }
   }
 
+
+
+  // Real-time: Notify product page and admins
+  emitEvent(`product:${productId}`, "new_question", { productId });
+  emitEvent("admins", "new_question", { productId, productName: productInfo[0].name });
+
   return { message: "Question submitted successfully." };
 }
 
@@ -83,6 +90,11 @@ async function answerQuestion(user, questionId, { answer }) {
       `/product/${questionData[0].slug}`
     );
   }
+
+
+
+  // Real-time: Notify product page
+  emitEvent(`product:${questionData[0].product_id || ""}`, "question_update", { questionId });
 
   return { message: "Answer added successfully." };
 }

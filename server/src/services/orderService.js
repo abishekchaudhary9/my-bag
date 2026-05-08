@@ -2,6 +2,7 @@ const pool = require("../config/database");
 const { mapOrder } = require("../models/orderModel");
 const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
+const { createNotification } = require("./notificationService");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
 
 async function createOrder(user, data) {
@@ -29,6 +30,16 @@ async function createOrder(user, data) {
   const shippingPhone = formatNepalPhone(shippingInfo.phone);
 
   const orderNumber = `ORD-${Date.now().toString().slice(-8)}`;
+
+  // Validate stock for all items
+  for (const item of items) {
+    const [prod] = await pool.query("SELECT name, stock FROM products WHERE name = ?", [item.name]);
+    if (prod.length === 0) throw createHttpError(404, `Product ${item.name} not found.`);
+    if (prod[0].stock < item.qty) {
+      throw createHttpError(400, `Not enough stock for ${item.name}. Only ${prod[0].stock} remaining.`);
+    }
+  }
+
   const [result] = await pool.query(
     `INSERT INTO orders (order_number, user_id, status, subtotal, shipping, discount, total, payment_method,
       shipping_first_name, shipping_last_name, shipping_email, shipping_phone,
@@ -60,9 +71,30 @@ async function createOrder(user, data) {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [result.insertId, item.name, item.color, item.size, item.qty, item.price, item.image || null]
     );
+
+    // Deduct stock
+    const [prodRows] = await pool.query("SELECT id, stock FROM products WHERE name = ?", [item.name]);
+    if (prodRows.length > 0) {
+      const newStock = Math.max(0, prodRows[0].stock - item.qty);
+      await pool.query("UPDATE products SET stock = ? WHERE id = ?", [newStock, prodRows[0].id]);
+      
+      // Real-time: Notify product page of stock change
+      emitEvent(`product:${prodRows[0].id}`, "stock_update", { productId: prodRows[0].id, stock: newStock });
+    }
   }
 
   await pool.query("DELETE FROM cart_items WHERE user_id = ?", [user.id]);
+  
+  // Real-time: Sync cart across user's devices (clear it)
+  emitEvent(`user_${user.id}`, "cart_update");
+
+  // Notify Customer
+  await createNotification(
+    user.id,
+    "Order Confirmed",
+    `Thank you for your order! Your order #${orderNumber} is now being processed.`,
+    `/orders`
+  );
 
   emitEvent("admins", "new_order", { orderId: result.insertId });
 

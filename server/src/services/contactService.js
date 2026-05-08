@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
 const { createNotification } = require("./notificationService");
 
@@ -24,6 +25,9 @@ async function createContactMessage({ name, email, subject, message }) {
       );
     }
   }
+
+  // Real-time: Notify admins of the new message
+  emitEvent("admins", "new_message", { name, subject });
 
   return { message: "Message sent successfully. We'll respond within 24 hours." };
 }

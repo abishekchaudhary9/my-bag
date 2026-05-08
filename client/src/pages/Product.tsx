@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Heart, Minus, Plus, Star, Truck, RotateCcw, Shield, CheckCircle2, Circle } from "lucide-react";
 import Layout from "@/components/site/Layout";
@@ -25,8 +25,10 @@ export default function ProductPage() {
   const [zoom, setZoom] = useState(false);
   const canUseWishlist = authState.isAuthenticated && !isAdmin;
 
+  const { socket } = useAuth();
+
   // Always fetch from API to get the correct database ID
-  useEffect(() => {
+  const fetchProduct = useCallback(() => {
     if (slug) {
       productsApi.get(slug)
         .then((d) => { if (d.product) setApiProduct(d.product); })
@@ -34,6 +36,43 @@ export default function ProductPage() {
         .finally(() => setLoading(false));
     }
   }, [slug]);
+
+  useEffect(() => {
+    fetchProduct();
+  }, [fetchProduct]);
+
+  useEffect(() => {
+    if (!socket || !product?.id) return;
+
+    const productId = product.id;
+    socket.emit("join_product", productId);
+
+    socket.on("stock_update", (data) => {
+      if (data.productId === productId) {
+        setApiProduct((prev: any) => prev ? { ...prev, stock: data.stock } : prev);
+      }
+    });
+
+    socket.on("new_review", () => {
+      fetchProduct();
+    });
+
+    socket.on("new_question", () => {
+      fetchProduct();
+    });
+
+    socket.on("product_update", () => {
+      fetchProduct();
+    });
+
+    return () => {
+      socket.emit("leave_product", productId);
+      socket.off("stock_update");
+      socket.off("new_review");
+      socket.off("new_question");
+      socket.off("product_update");
+    };
+  }, [socket, product?.id, fetchProduct]);
 
   useEffect(() => {
     if (product) markViewed(product.id);

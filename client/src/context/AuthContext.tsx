@@ -65,6 +65,8 @@ type AuthState = {
   user: User | null;
   isAuthenticated: boolean;
   orders: Order[];
+  notifications: any[];
+  unreadCount: number;
   loading: boolean;
 };
 
@@ -74,9 +76,11 @@ type AuthAction =
   | { type: "UPDATE_PROFILE"; updates: Partial<User> }
   | { type: "SET_ORDERS"; orders: Order[] }
   | { type: "ADD_ORDER"; order: Order }
+  | { type: "SET_NOTIFICATIONS"; notifications: any[] }
+  | { type: "MARK_NOTIFICATIONS_READ" }
   | { type: "SET_LOADING"; loading: boolean };
 
-const initial: AuthState = { user: null, isAuthenticated: false, orders: [], loading: true };
+const initial: AuthState = { user: null, isAuthenticated: false, orders: [], notifications: [], unreadCount: 0, loading: true };
 
 let phoneLoginConfirmation: ConfirmationResult | null = null;
 let phoneResetConfirmation: ConfirmationResult | null = null;
@@ -95,6 +99,18 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
       return { ...state, orders: action.orders };
     case "ADD_ORDER":
       return { ...state, orders: [action.order, ...state.orders] };
+    case "SET_NOTIFICATIONS":
+      return { 
+        ...state, 
+        notifications: action.notifications, 
+        unreadCount: action.notifications.filter((n: any) => !n.is_read).length 
+      };
+    case "MARK_NOTIFICATIONS_READ":
+      return { 
+        ...state, 
+        notifications: state.notifications.map(n => ({ ...n, is_read: 1 })),
+        unreadCount: 0
+      };
     case "SET_LOADING":
       return { ...state, loading: action.loading };
     default:
@@ -132,6 +148,9 @@ type AuthCtx = {
   resendVerificationEmail: () => AuthResult;
   sendOtp: (email: string) => AuthResult;
   verifyOtp: (email: string, code: string) => AuthResult;
+  fetchNotifications: () => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  socket: Socket | null;
   isAdmin: boolean;
 };
 
@@ -168,6 +187,100 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
+
+  const fetchOrders = useCallback(async () => {
+    if (!state.isAuthenticated) return;
+    try {
+      const { orders } = await ordersApi.list();
+      dispatch({ type: "SET_ORDERS", orders });
+    } catch {
+      return;
+    }
+  }, [state.isAuthenticated]);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!state.isAuthenticated) return;
+    try {
+      const { notifications } = await authApi.notifications();
+      dispatch({ type: "SET_NOTIFICATIONS", notifications });
+    } catch {
+      return;
+    }
+  }, [state.isAuthenticated]);
+
+  const markAllNotificationsRead = async () => {
+    if (!state.isAuthenticated) return;
+    try {
+      await authApi.markNotificationsRead();
+      dispatch({ type: "MARK_NOTIFICATIONS_READ" });
+    } catch {
+      return;
+    }
+  };
+
+  const exchangeFirebaseUserWithSocket = useCallback(async (profile?: any) => {
+    const { user, token } = await exchangeFirebaseUser(profile);
+    
+    // Initialize Socket
+    if (!socket) {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      // Remove /api if present for the base socket connection
+      const socketUrl = apiBase.replace(/\/api$/, "");
+      
+      socket = io(socketUrl, { 
+        withCredentials: true,
+        transports: ["websocket", "polling"]
+      });
+      
+      socket.on("connect", () => {
+        console.log("[Socket] Connected to real-time server");
+        if (user.role === "admin") {
+          socket?.emit("join_admin");
+        } else {
+          socket?.emit("join_user", user.id);
+        }
+      });
+
+      socket.on("notification", (data) => {
+        toast.info(data.title, {
+          description: data.message,
+        });
+        fetchNotifications();
+      });
+
+      socket.on("order_update", (data) => {
+        toast.info(`Order Status Updated`, { 
+          description: `Order #${data.orderNumber} is now ${data.status}.` 
+        });
+        fetchOrders();
+        fetchNotifications(); // Refresh the badge and list
+      });
+
+      socket.on("new_order", (data) => {
+        toast.success(`New Order Received!`, { 
+          description: `A new order has been placed (#${data.orderId}).` 
+        });
+        if (user.role === "admin") {
+          // This will be caught by the Admin page's custom listener too
+          fetchOrders(); 
+        }
+      });
+    }
+
+    return { user, token };
+  }, [fetchOrders, fetchNotifications]);
+
+  const finishFirebaseLogin = useCallback(async (
+    profile?: { firstName?: string; lastName?: string; phone?: string }
+  ) => {
+    const { user, token } = await exchangeFirebaseUserWithSocket(profile);
+    if (user.emailVerified) {
+      setToken(token);
+    } else {
+      setToken(null);
+    }
+    dispatch({ type: "LOGIN", user });
+  }, [exchangeFirebaseUserWithSocket]);
 
   useEffect(() => {
     let active = true;
@@ -223,77 +336,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       unsubscribe?.();
     };
-  }, []);
+  }, [exchangeFirebaseUserWithSocket]);
 
   useEffect(() => {
     if (state.isAuthenticated && state.user?.role !== "admin") {
       ordersApi.list()
         .then(({ orders }) => dispatch({ type: "SET_ORDERS", orders }))
         .catch(() => undefined);
+      
+      authApi.notifications()
+        .then(({ notifications }) => dispatch({ type: "SET_NOTIFICATIONS", notifications }))
+        .catch(() => undefined);
     }
   }, [state.isAuthenticated, state.user?.role]);
 
-  const fetchOrders = useCallback(async () => {
-    if (!state.isAuthenticated) return;
-    try {
-      const { orders } = await ordersApi.list();
-      dispatch({ type: "SET_ORDERS", orders });
-    } catch {
-      return;
-    }
-  }, [state.isAuthenticated]);
-
-  const exchangeFirebaseUserWithSocket = async (profile?: any) => {
-    const { user, token } = await exchangeFirebaseUser(profile);
-    
-    // Initialize Socket
-    if (!socket) {
-      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
-      // Remove /api if present for the base socket connection
-      const socketUrl = apiBase.replace(/\/api$/, "");
-      
-      socket = io(socketUrl, { 
-        withCredentials: true,
-        transports: ["websocket", "polling"]
-      });
-      
-      socket.on("connect", () => {
-        console.log("[Socket] Connected to real-time server");
-        if (user.role === "admin") {
-          socket?.emit("join_admin");
-        } else {
-          socket?.emit("join_user", user.id);
-        }
-      });
-
-      socket.on("order_update", (data) => {
-        toast.info(`Order Status Updated`, { 
-          description: `Order #${data.orderNumber} is now ${data.status}.` 
-        });
-        fetchOrders();
-      });
-
-      socket.on("new_order", (data) => {
-        toast.success(`New Order Received!`, { 
-          description: `A new order has been placed (#${data.orderId}).` 
-        });
-      });
-    }
-
-    return { user, token };
-  };
-
-  const finishFirebaseLogin = async (
-    profile?: { firstName?: string; lastName?: string; phone?: string }
-  ) => {
-    const { user, token } = await exchangeFirebaseUserWithSocket(profile);
-    if (user.emailVerified) {
-      setToken(token);
-    } else {
-      setToken(null);
-    }
-    dispatch({ type: "LOGIN", user });
-  };
 
   const value: AuthCtx = {
     state,
@@ -466,9 +522,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updatePassword(currentUser, newPassword);
     },
     logout: () => {
-      if (firebaseAuth) {
-        signOut(firebaseAuth).catch(() => {});
+      try {
+        const auth = getConfiguredFirebaseAuth();
+        signOut(auth).catch(() => {});
+      } catch (err) {
+        console.warn("Logout: Firebase auth not available", err);
       }
+      
       if (socket) {
         socket.disconnect();
         socket = null;
@@ -496,6 +556,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     addOrder: (order) => dispatch({ type: "ADD_ORDER", order }),
     fetchOrders,
+    fetchNotifications,
+    markAllNotificationsRead,
+    socket,
     resendVerificationEmail: async () => {
       const auth = getConfiguredFirebaseAuth();
       if (!auth.currentUser) return { success: false, error: "No user logged in" };
