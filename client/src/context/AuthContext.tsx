@@ -24,6 +24,8 @@ import {
 } from "@/lib/firebase";
 import { formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
 
+const ADMIN_EMAILS = ["abishekc441@gmail.com"]; // Frontend hint for faster UI response
+
 export type UserRole = "user" | "admin";
 
 export type User = {
@@ -451,7 +453,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: getErrorMessage(err, "Verification failed") };
       }
     },
-    isAdmin: state.user?.role === "admin",
+    isAdmin: state.user?.role === "admin" || (!!state.user?.email && ADMIN_EMAILS.includes(state.user.email)),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
