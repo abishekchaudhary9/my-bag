@@ -35,6 +35,31 @@ async function getFeedback(req, res) {
   res.json(result);
 }
 
+async function listNotifications(req, res) {
+  const notifications = await adminService.listNotifications();
+  res.json({ notifications });
+}
+
+async function createNotification(req, res) {
+  const result = await adminService.createNotification(req.body);
+  res.json(result);
+}
+
+async function listCoupons(req, res) {
+  const coupons = await adminService.listCoupons();
+  res.json({ coupons });
+}
+
+async function createCoupon(req, res) {
+  const result = await adminService.createCoupon(req.body);
+  res.json(result);
+}
+
+async function deleteCoupon(req, res) {
+  const result = await adminService.deleteCoupon(req.params.id);
+  res.json(result);
+}
+
 module.exports = {
   getStats,
   listOrders,
@@ -43,4 +68,9 @@ module.exports = {
   listCustomers,
   listMessages,
   getFeedback,
+  listNotifications,
+  createNotification,
+  listCoupons,
+  createCoupon,
+  deleteCoupon,
 };

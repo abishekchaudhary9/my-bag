@@ -1,6 +1,17 @@
 {
   "public": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/client/dist/$1" }
+    {
+      "source": "/assets/(.*)",
+      "destination": "/client/dist/assets/$1"
+    },
+    {
+      "source": "/images/(.*)",
+      "destination": "/client/dist/images/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/client/dist/index.html"
+    }
   ]
 }

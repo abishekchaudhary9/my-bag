@@ -25,7 +25,15 @@ export function resolveAssetUrl(value?: string | null) {
     return `${ASSET_BASE}${trimmed}`;
   }
 
-  return trimmed;
+  // If it's just a filename like "product.jpg", prefix it with the backend image path
+  if (!trimmed.startsWith("/") && !trimmed.includes(".")) {
+     // Likely not a file
+     return trimmed;
+  }
+
+  if (!trimmed.startsWith("/") && trimmed.includes(".")) {
+    return `${ASSET_BASE}/images/${trimmed}`;
+  }
 }
 
 function normalizeAssetUrls<T>(value: T): T {
@@ -377,4 +385,18 @@ export const adminApi = {
   customers: () => request<{ customers: any[] }>("/admin/customers"),
   messages: () => request<{ messages: any[] }>("/admin/messages"),
   feedback: () => request<{ reviews: any[], questions: any[] }>("/admin/feedback"),
+  notifications: () => request<{ notifications: any[] }>("/admin/notifications"),
+  sendNotification: (data: { userId: number, title: string, message: string, link?: string }) =>
+    request<{ message: string }>("/admin/notifications", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  coupons: () => request<{ coupons: any[] }>("/admin/coupons"),
+  createCoupon: (data: { code: string, discount_pct: number, active: boolean }) =>
+    request<{ message: string }>("/admin/coupons", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteCoupon: (id: number) =>
+    request<{ message: string }>(`/admin/coupons/${id}`, { method: "DELETE" }),
 };

@@ -51,19 +51,19 @@ export default function OrderDetailsModal({
                   <div className="eyebrow">Customer Account</div>
                 </div>
                 <div className="space-y-3 text-sm">
-                  <Detail label="Name" value={order.customer.name} />
-                  <Detail label="Email" value={order.customer.email} icon={Mail} />
-                  <Detail label="Phone" value={order.customer.phone} icon={Phone} />
-                  <Detail label="Customer ID" value={order.customer.id} />
-                  <Detail label="Joined" value={new Date(order.customer.joined).toLocaleDateString()} />
-                  <Detail label="Registered Address" value={order.customer.registeredAddress?.formatted} icon={MapPin} />
+                  <Detail label="Name" value={order.customer?.name} />
+                  <Detail label="Email" value={order.customer?.email} icon={Mail} />
+                  <Detail label="Phone" value={order.customer?.phone} icon={Phone} />
+                  <Detail label="Customer ID" value={order.customer?.id} />
+                  <Detail label="Joined" value={order.customer?.joined ? new Date(order.customer.joined).toLocaleDateString() : "N/A"} />
+                  <Detail label="Registered Address" value={order.customer?.registeredAddress?.formatted} icon={MapPin} />
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-2 text-xs">
-                  <MiniStat label="Orders" value={order.customer.stats.totalOrders} />
-                  <MiniStat label="Spent" value={money(order.customer.stats.totalSpent)} />
+                  <MiniStat label="Orders" value={order.customer?.stats?.totalOrders || 0} />
+                  <MiniStat label="Spent" value={money(order.customer?.stats?.totalSpent)} />
                   <MiniStat
                     label="Last Order"
-                    value={order.customer.stats.lastOrderDate ? new Date(order.customer.stats.lastOrderDate).toLocaleDateString() : "None"}
+                    value={order.customer?.stats?.lastOrderDate ? new Date(order.customer.stats.lastOrderDate).toLocaleDateString() : "None"}
                   />
                 </div>
               </section>
@@ -74,9 +74,9 @@ export default function OrderDetailsModal({
                   <div className="eyebrow">Shipping Details</div>
                 </div>
                 <div className="space-y-3 text-sm">
-                  <Detail label="Recipient" value={order.shippingContact.name || order.customer.name} />
-                  <Detail label="Email" value={order.shippingContact.email || order.customer.email} icon={Mail} />
-                  <Detail label="Phone" value={order.shippingContact.phone || order.customer.phone} icon={Phone} />
+                  <Detail label="Recipient" value={order.shippingContact?.name || order.customer?.name} />
+                  <Detail label="Email" value={order.shippingContact?.email || order.customer?.email} icon={Mail} />
+                  <Detail label="Phone" value={order.shippingContact?.phone || order.customer?.phone} icon={Phone} />
                   <Detail label="Address" value={order.shippingAddress?.formatted} icon={MapPin} />
                   <Detail label="Tracking" value={order.trackingNumber} />
                 </div>
@@ -101,7 +101,7 @@ export default function OrderDetailsModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items.map((item: any) => (
+                    {order.items?.map((item: any) => (
                       <tr key={item.id} className="border-b border-border/50 last:border-0">
                         <td className="px-5 py-3 font-medium">{item.name}</td>
                         <td className="px-5 py-3">{fallback(item.color)}</td>
@@ -132,11 +132,11 @@ export default function OrderDetailsModal({
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryCard({ label, value }: { label: string; value?: string }) {
   return (
     <div className="border border-border p-4">
       <div className="eyebrow mb-2">{label}</div>
-      <div className="text-sm capitalize">{value}</div>
+      <div className="text-sm capitalize">{value || "..."}</div>
     </div>
   );
 }

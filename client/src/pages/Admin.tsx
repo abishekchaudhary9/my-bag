@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -120,7 +120,7 @@ function MetricCard({
   detail,
   tone = "text-muted-foreground",
 }: {
-  icon: typeof BarChart3;
+  icon: any;
   label: string;
   value: React.ReactNode;
   detail: string;
@@ -184,7 +184,7 @@ function ChartTooltip({ active, payload, label }: any) {
         {payload.map((item: any) => (
           <div key={`${item.name}-${item.value}`} className="flex items-center gap-2">
             <span className="h-2 w-2" style={{ background: item.color }} />
-            <span className="text-muted-foreground">{item.name}:</span>
+            <span className="text-muted-foreground">{String(item.name).charAt(0).toUpperCase() + String(item.name).slice(1)}:</span>
             <span className="font-medium">
               {typeof item.value === "number" && ["revenue", "value", "spent"].some((key) => item.name?.toLowerCase().includes(key)) ? formatCompact(item.value) : item.value}
             </span>
@@ -195,7 +195,7 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
-type Tab = "dashboard" | "products" | "orders" | "customers" | "feedback";
+type Tab = "dashboard" | "products" | "orders" | "customers" | "feedback" | "notifications" | "coupons";
 
 /* ─── Main Admin Page ──────────────────────────────────── */
 export default function Admin() {
@@ -208,6 +208,8 @@ export default function Admin() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [productList, setProductList] = useState<any[]>([]);
   const [feedback, setFeedback] = useState<{ reviews: any[], questions: any[] }>({ reviews: [], questions: [] });
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   /* Modal states */
@@ -242,13 +244,29 @@ export default function Admin() {
       const d = await productsApi.list();
       setProductList(d.products);
     } catch {
-      // Fallback to local data if API fails
       setProductList(localProducts as any[]);
     }
   }, []);
 
   const fetchFeedback = useCallback(async () => {
-    try { const d = await adminApi.feedback(); setFeedback(d); } catch {}
+    try { 
+      const d = await adminApi.feedback(); 
+      if (d) setFeedback({ reviews: d.reviews || [], questions: d.questions || [] }); 
+    } catch {}
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    try { 
+      const d = await adminApi.notifications(); 
+      if (d && d.notifications) setNotifications(d.notifications); 
+    } catch {}
+  }, []);
+
+  const fetchCoupons = useCallback(async () => {
+    try { 
+      const d = await adminApi.coupons(); 
+      if (d && d.coupons) setCoupons(d.coupons); 
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -258,9 +276,22 @@ export default function Admin() {
     fetchCustomers();
     fetchProducts();
     fetchFeedback();
-  }, [isAdmin, fetchStats, fetchOrders, fetchCustomers, fetchProducts, fetchFeedback]);
+    fetchNotifications();
+    fetchCoupons();
+  }, [isAdmin, fetchStats, fetchOrders, fetchCustomers, fetchProducts, fetchFeedback, fetchNotifications, fetchCoupons]);
 
   /* ─── Auth guard ────────────────────────────────────── */
+  if (state.loading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="h-8 w-8 animate-spin text-accent" strokeWidth={1} />
+          <div className="eyebrow animate-pulse">Authenticating Admin...</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!state.isAuthenticated || !isAdmin) {
     return (
       <Layout>
@@ -284,10 +315,25 @@ export default function Admin() {
         await productsApi.create(data);
         toast.success("Product created");
       }
-      await fetchProducts(); // Refresh list from DB
+      await fetchProducts();
     } catch (err: any) {
       toast.error(err.message || "Failed to save product");
       throw err;
+    }
+  };
+
+  const handleCreateCoupon = async () => {
+    const code = prompt("Enter coupon code (e.g., SUMMER20):");
+    if (!code) return;
+    const pct = prompt("Enter discount percentage (1-100):");
+    if (!pct || isNaN(Number(pct))) return;
+
+    try {
+      await adminApi.createCoupon({ code, discount_pct: Number(pct), active: true });
+      toast.success("Coupon created!");
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create coupon");
     }
   };
 
@@ -317,8 +363,13 @@ export default function Admin() {
     setViewOrderLoading(true);
     setViewOrder({ id: orderNumber });
     try {
-      const { order } = await adminApi.orderDetails(orderNumber);
-      setViewOrder(order);
+      const res = await adminApi.orderDetails(orderNumber);
+      if (res && res.order) {
+        setViewOrder(res.order);
+      } else {
+        toast.error("Order details not found");
+        setViewOrder(null);
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to load order details");
       setViewOrder(null);
@@ -329,40 +380,48 @@ export default function Admin() {
 
   const refresh = () => {
     setLoading(true);
-    Promise.all([fetchStats(), fetchOrders(tab === "orders" ? orderFilter : "all"), fetchCustomers(), fetchProducts(), fetchFeedback()])
+    Promise.all([fetchStats(), fetchOrders(tab === "orders" ? orderFilter : "all"), fetchCustomers(), fetchProducts(), fetchFeedback(), fetchNotifications(), fetchCoupons()])
       .finally(() => { setLoading(false); toast.success("Data refreshed"); });
   };
 
   /* ─── Tab config ────────────────────────────────────── */
-  const tabs: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
+  const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "dashboard", label: "Dashboard", icon: BarChart3 },
     { key: "products", label: "Products", icon: Package },
     { key: "orders", label: "Orders", icon: ShoppingBag },
     { key: "customers", label: "Customers", icon: Users },
     { key: "feedback", label: "Feedback", icon: TrendingUp },
+    { key: "notifications", label: "Notifications", icon: AlertTriangle },
+    { key: "coupons", label: "Coupons", icon: DollarSign },
   ];
 
-  const filteredProducts = productList.filter((p) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase()));
-  const visibleOrders = orders.filter((o) => {
+  /* ─── Calculations ──────────────────────────────────── */
+  const filteredProducts = useMemo(() => productList.filter((p) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())), [productList, searchQ]);
+  
+  const visibleOrders = useMemo(() => orders.filter((o) => {
     const q = orderSearch.trim().toLowerCase();
     if (!q) return true;
     return [o.id, o.customer, o.customerEmail, o.customerPhone, o.customerAddress]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(q));
-  });
+  }), [orders, orderSearch]);
 
-  const orderRevenue = orders.reduce((sum, order) => sum + parseCurrency(order.total), 0);
+  const orderRevenue = useMemo(() => orders.reduce((sum, order) => sum + parseCurrency(order.total), 0), [orders]);
   const statsRevenue = stats ? parseCurrency(stats.revenue) : 0;
   const displayRevenue = stats ? statsRevenue : orderRevenue;
   const displayOrders = stats?.orders ?? orders.length;
   const displayCustomers = stats?.customers ?? customers.length;
   const displayAvgOrder = stats ? parseCurrency(stats.avgOrder) : (orders.length ? orderRevenue / orders.length : 0);
-  const inventoryValue = productList.reduce((sum, product) => sum + parseCurrency(product.price) * (Number(product.stock) || 0), 0);
-  const averageStock = productList.length
-    ? Math.round(productList.reduce((sum, product) => sum + (Number(product.stock) || 0), 0) / productList.length)
-    : 0;
+  
+  const inventoryStats = useMemo(() => {
+    const value = productList.reduce((sum, product) => sum + parseCurrency(product.price) * (Number(product.stock) || 0), 0);
+    const avg = productList.length
+      ? Math.round(productList.reduce((sum, product) => sum + (Number(product.stock) || 0), 0) / productList.length)
+      : 0;
+    return { value, avg };
+  }, [productList]);
 
-  const statusData = ["processing", "shipped", "delivered", "cancelled"].map((status, index) => {
+  const statusData = useMemo(() => ["processing", "shipped", "delivered", "cancelled"].map((status, index) => {
     const matching = orders.filter((order) => order.status === status);
     return {
       status,
@@ -371,54 +430,65 @@ export default function Admin() {
       revenue: matching.reduce((sum, order) => sum + parseCurrency(order.total), 0),
       fill: chartColors[index + 1],
     };
-  }).filter((item) => item.orders > 0);
+  }).filter((item) => item.orders > 0), [orders]);
 
-  const revenueBuckets = orders.reduce((acc, order) => {
-    const date = new Date(order.createdAt || order.date);
-    if (Number.isNaN(date.getTime())) return acc;
-    const key = date.toISOString().slice(0, 10);
-    if (!acc[key]) {
-      acc[key] = {
-        sort: date.getTime(),
-        date: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        revenue: 0,
-        orders: 0,
-      };
-    }
-    acc[key].revenue += parseCurrency(order.total);
-    acc[key].orders += 1;
-    return acc;
-  }, {} as Record<string, { sort: number; date: string; revenue: number; orders: number }>);
+  const revenueTrend = useMemo(() => {
+    const buckets = orders.reduce((acc, order) => {
+      const date = new Date(order.createdAt || order.date);
+      if (Number.isNaN(date.getTime())) return acc;
+      const key = date.toISOString().slice(0, 10);
+      if (!acc[key]) {
+        acc[key] = {
+          sort: date.getTime(),
+          date: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          revenue: 0,
+          orders: 0,
+        };
+      }
+      acc[key].revenue += parseCurrency(order.total);
+      acc[key].orders += 1;
+      return acc;
+    }, {} as Record<string, { sort: number; date: string; revenue: number; orders: number }>);
 
-  const revenueTrend = Object.values(revenueBuckets)
-    .sort((a, b) => a.sort - b.sort)
-    .slice(-7)
-    .map(({ sort, ...item }) => item);
+    return Object.keys(buckets)
+      .map((k) => buckets[k])
+      .sort((a, b) => a.sort - b.sort)
+      .slice(-7)
+      .map((item) => ({
+        date: item.date,
+        revenue: item.revenue,
+        orders: item.orders
+      }));
+  }, [orders]);
 
-  const categoryMap = productList.reduce((acc, product) => {
-    const category = product.category || "Uncategorized";
-    if (!acc[category]) acc[category] = { category, products: 0, stock: 0, value: 0 };
-    acc[category].products += 1;
-    acc[category].stock += Number(product.stock) || 0;
-    acc[category].value += parseCurrency(product.price) * (Number(product.stock) || 0);
-    return acc;
-  }, {} as Record<string, { category: string; products: number; stock: number; value: number }>);
+  const categoryData = useMemo(() => {
+    const map = productList.reduce((acc, product) => {
+      const category = product.category || "Uncategorized";
+      if (!acc[category]) acc[category] = { category, products: 0, stock: 0, value: 0 };
+      acc[category].products += 1;
+      acc[category].stock += Number(product.stock) || 0;
+      acc[category].value += parseCurrency(product.price) * (Number(product.stock) || 0);
+      return acc;
+    }, {} as Record<string, { category: string; products: number; stock: number; value: number }>);
 
-  const categoryData = Object.values(categoryMap)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
+    return Object.keys(map)
+      .map((k) => map[k])
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [productList]);
 
-  const lowStockProducts = productList
+  const lowStockProducts = useMemo(() => productList
     .filter((product) => (Number(product.stock) || 0) <= 10)
     .sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0))
-    .slice(0, 5);
+    .slice(0, 5), [productList]);
 
-  const topCustomers = customers
+  const topCustomers = useMemo(() => customers
     .map((customer) => ({ ...customer, spentValue: parseCurrency(customer.spent) }))
     .sort((a, b) => b.spentValue - a.spentValue)
-    .slice(0, 5);
-  const customerOrderCount = customers.reduce((sum, customer) => sum + (Number(customer.orders) || 0), 0);
-  const customerLifetimeValue = customers.reduce((sum, customer) => sum + parseCurrency(customer.spent), 0);
+    .slice(0, 5), [customers]);
+    
+  const customerOrderCount = useMemo(() => customers.reduce((sum, customer) => sum + (Number(customer.orders) || 0), 0), [customers]);
+  const customerLifetimeValue = useMemo(() => customers.reduce((sum, customer) => sum + parseCurrency(customer.spent), 0), [customers]);
 
   const processingOrders = orders.filter((order) => order.status === "processing").length;
   const shippedOrders = orders.filter((order) => order.status === "shipped").length;
@@ -440,7 +510,6 @@ export default function Admin() {
         </div>
       </section>
 
-      {/* Tabs */}
       <section className="container-luxe pb-6">
         <div className="relative md:hidden">
           <select
@@ -487,13 +556,9 @@ export default function Admin() {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-              <Panel
-                title="Revenue Trend"
-                eyebrow="Last active order days"
-                action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">Orders</button>}
-              >
+              <Panel title="Revenue Trend" eyebrow="Last active order days" action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">Orders</button>}>
                 {revenueTrend.length === 0 ? (
-                  <div className="grid h-[280px] place-items-center text-sm text-muted-foreground">No revenue data yet.</div>
+                  <div className="grid h-[280px] place-items-center text-sm text-muted-foreground border border-dashed border-border">No revenue data yet.</div>
                 ) : (
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -533,11 +598,7 @@ export default function Admin() {
                     </div>
                     <div className="space-y-2">
                       {statusData.map((item) => (
-                        <button
-                          key={item.status}
-                          onClick={() => { setOrderFilter(item.status); setTab("orders"); fetchOrders(item.status); }}
-                          className="flex w-full items-center justify-between border border-border px-3 py-2 text-left text-xs hover:border-foreground/40"
-                        >
+                        <button key={item.status} onClick={() => { setOrderFilter(item.status); setTab("orders"); fetchOrders(item.status); }} className="flex w-full items-center justify-between border border-border px-3 py-2 text-left text-xs hover:border-foreground/40">
                           <span className="flex items-center gap-2 capitalize">
                             <span className="h-2 w-2" style={{ background: item.fill }} />
                             {item.status}
@@ -595,22 +656,18 @@ export default function Admin() {
                 <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-5 text-xs">
                   <div>
                     <div className="text-muted-foreground">Inventory value</div>
-                    <div className="mt-1 font-medium">{formatCurrency(inventoryValue)}</div>
+                    <div className="mt-1 font-medium">{formatCurrency(inventoryStats.value)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Avg. stock</div>
-                    <div className="mt-1 font-medium">{averageStock} units</div>
+                    <div className="mt-1 font-medium">{inventoryStats.avg} units</div>
                   </div>
                 </div>
               </Panel>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-              <Panel
-                title="Recent Orders"
-                eyebrow="Customer activity"
-                action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">View all</button>}
-              >
+              <Panel title="Recent Orders" eyebrow="Customer activity" action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">View all</button>}>
                 {recentOrders.length === 0 ? (
                   <div className="py-10 text-center text-sm text-muted-foreground">No orders yet.</div>
                 ) : (
@@ -634,8 +691,12 @@ export default function Admin() {
                             <td className="py-3">{o.total}</td>
                             <td className="py-3"><StatusPill status={o.status} /></td>
                             <td className="py-3 text-right">
-                              <button onClick={() => handleViewOrder(o.id)} className="inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs hover:border-foreground">
-                                <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+                              <button onClick={() => handleViewOrder(o.id)} disabled={viewOrderLoading && viewOrder?.id === o.id} className="inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs hover:border-foreground disabled:opacity-50">
+                                {viewOrderLoading && viewOrder?.id === o.id ? (
+                                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                )}
                                 Details
                               </button>
                             </td>
@@ -653,7 +714,7 @@ export default function Admin() {
                 ) : (
                   <div className="space-y-3">
                     {lowStockProducts.map((product) => (
-                      <button key={product.id} onClick={() => { setEditProduct(product); }} className="flex w-full items-center justify-between border border-border p-3 text-left hover:border-foreground/40">
+                      <button key={product.id} onClick={() => setEditProduct(product)} className="flex w-full items-center justify-between border border-border p-3 text-left hover:border-foreground/40">
                         <span className="flex min-w-0 items-center gap-3">
                           <span className="grid h-10 w-10 flex-shrink-0 place-items-center bg-secondary">
                             <Package className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
@@ -678,7 +739,7 @@ export default function Admin() {
           <div className="space-y-6 animate-fade-up">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MetricCard icon={Package} label="Products" value={productList.length} detail={`${filteredProducts.length} matching search`} />
-              <MetricCard icon={Boxes} label="Inventory" value={formatCurrency(inventoryValue)} detail={`${averageStock} avg. units in stock`} tone="text-blue-600" />
+              <MetricCard icon={Boxes} label="Inventory" value={formatCurrency(inventoryStats.value)} detail={`${inventoryStats.avg} avg. units in stock`} tone="text-blue-600" />
               <MetricCard icon={AlertTriangle} label="Low Stock" value={lowStockProducts.length} detail="10 units or fewer" tone="text-red-600" />
               <MetricCard icon={BarChart3} label="Categories" value={categoryData.length} detail="Active product groups" tone="text-amber-600" />
             </div>
@@ -723,7 +784,6 @@ export default function Admin() {
                       <td className="py-3">{p.rating}</td>
                       <td className="py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => toast.info(`${p.name} — Rs ${p.price} · Stock: ${p.stock} · ${p.category}`)} className="p-2 hover:bg-secondary transition-colors" title="View"><Eye className="h-3.5 w-3.5" strokeWidth={1.5} /></button>
                           <button onClick={() => setEditProduct(p)} className="p-2 hover:bg-secondary transition-colors" title="Edit"><Edit className="h-3.5 w-3.5" strokeWidth={1.5} /></button>
                           <button onClick={() => setDeleteTarget(p)} className="p-2 hover:bg-destructive/10 text-destructive transition-colors" title="Delete"><Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} /></button>
                         </div>
@@ -762,20 +822,12 @@ export default function Admin() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-2 overflow-x-auto">
                 {["all", "processing", "shipped", "delivered", "cancelled"].map((s) => (
-                  <button key={s} onClick={() => { setOrderFilter(s); fetchOrders(s); }}
-                    className={`px-4 py-2 text-xs uppercase tracking-wider capitalize transition-colors ${
-                      orderFilter === s ? "bg-foreground text-background" : "border border-border hover:border-foreground"
-                    }`}>{s}</button>
+                  <button key={s} onClick={() => { setOrderFilter(s); fetchOrders(s); }} className={`px-4 py-2 text-xs uppercase tracking-wider capitalize transition-colors ${orderFilter === s ? "bg-foreground text-background" : "border border-border hover:border-foreground"}`}>{s}</button>
                 ))}
               </div>
               <div className="relative w-full lg:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
-                <input
-                  value={orderSearch}
-                  onChange={(event) => setOrderSearch(event.target.value)}
-                  placeholder="Search orders, customers, email..."
-                  className="w-full bg-secondary/40 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
-                />
+                <input value={orderSearch} onChange={(event) => setOrderSearch(event.target.value)} placeholder="Search orders, customers, email..." className="w-full bg-secondary/40 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-accent" />
               </div>
             </div>
             {visibleOrders.length === 0 ? (
@@ -799,9 +851,7 @@ export default function Admin() {
                         <td className="py-3 font-medium">{o.id}</td>
                         <td className="py-3">
                           <div className="font-medium">{o.customer}</div>
-                          <div className="text-xs text-muted-foreground max-w-[220px] truncate">
-                            {o.customerAddress || "No saved address"}
-                          </div>
+                          <div className="text-xs text-muted-foreground max-w-[220px] truncate">{o.customerAddress || "No saved address"}</div>
                         </td>
                         <td className="py-3">
                           <div>{o.customerEmail}</div>
@@ -812,17 +862,15 @@ export default function Admin() {
                         <td className="py-3"><StatusPill status={o.status} /></td>
                         <td className="py-3 text-muted-foreground">{o.date}</td>
                         <td className="py-3 text-right">
-                          <button
-                            onClick={() => handleViewOrder(o.id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border hover:border-foreground transition-colors text-xs"
-                            title="View customer and order details"
-                          >
-                            <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          <button onClick={() => handleViewOrder(o.id)} disabled={viewOrderLoading && viewOrder?.id === o.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border hover:border-foreground transition-colors text-xs disabled:opacity-50">
+                            {viewOrderLoading && viewOrder?.id === o.id ? (
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            )}
                             Details
                           </button>
-                          <button onClick={() => setEditOrder(o)} className="p-2 hover:bg-secondary transition-colors" title="Edit status">
-                            <Edit className="h-3.5 w-3.5" strokeWidth={1.5} />
-                          </button>
+                          <button onClick={() => setEditOrder(o)} className="p-2 hover:bg-secondary transition-colors"><Edit className="h-3.5 w-3.5" strokeWidth={1.5} /></button>
                         </td>
                       </tr>
                     ))}
@@ -895,6 +943,7 @@ export default function Admin() {
             )}
           </div>
         )}
+
         {/* ─── FEEDBACK ─── */}
         {tab === "feedback" && (
           <div className="space-y-8 animate-fade-up">
@@ -905,11 +954,8 @@ export default function Admin() {
               <MetricCard icon={CheckCircle} label="Resolved" value={unresolvedFeedback === 0 ? "Clear" : "Pending"} detail="Current queue state" tone={unresolvedFeedback === 0 ? "text-emerald-600" : "text-red-600"} />
             </div>
 
-            {/* Unresolved Reviews */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="eyebrow">Unresolved Reviews</div>
-              </div>
+              <div className="eyebrow mb-4">Unresolved Reviews</div>
               {feedback.reviews.length === 0 ? (
                 <div className="py-10 text-center text-sm text-muted-foreground border border-border">No unresolved reviews.</div>
               ) : (
@@ -927,20 +973,15 @@ export default function Admin() {
                         </div>
                       </div>
                       <div className="text-sm text-foreground/80 mb-3">{r.text}</div>
-                      <Link to={`/product/${r.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">
-                        Go to Product to Reply
-                      </Link>
+                      <Link to={`/product/${r.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Reply</Link>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Unanswered Questions */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="eyebrow">Unanswered Questions</div>
-              </div>
+              <div className="eyebrow mb-4">Unanswered Questions</div>
               {feedback.questions.length === 0 ? (
                 <div className="py-10 text-center text-sm text-muted-foreground border border-border">No unanswered questions.</div>
               ) : (
@@ -957,12 +998,72 @@ export default function Admin() {
                           <div>{new Date(q.date).toLocaleDateString()}</div>
                         </div>
                       </div>
-                      <Link to={`/product/${q.productSlug}`} className="mt-2 text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">
-                        Go to Product to Answer
-                      </Link>
+                      <Link to={`/product/${q.productSlug}`} className="mt-2 text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Answer</Link>
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── NOTIFICATIONS ─── */}
+        {tab === "notifications" && (
+          <div className="space-y-6 animate-fade-up">
+            <Panel title="System Notifications" eyebrow="User activity alerts">
+              {notifications.length === 0 ? (
+                <div className="py-16 text-center text-sm text-muted-foreground border border-dashed border-border">No recent notifications.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b border-border text-left">
+                      <th className="pb-3 text-xs text-muted-foreground font-medium">Recipient</th>
+                      <th className="pb-3 text-xs text-muted-foreground font-medium">Title</th>
+                      <th className="pb-3 text-xs text-muted-foreground font-medium">Message</th>
+                      <th className="pb-3 text-xs text-muted-foreground font-medium text-right">Date</th>
+                    </tr></thead>
+                    <tbody>
+                      {notifications.map((n) => (
+                        <tr key={n.id} className="border-b border-border/50">
+                          <td className="py-3">
+                            <div className="font-medium">{(n.first_name || n.last_name) ? `${n.first_name || ""} ${n.last_name || ""}` : "System User"}</div>
+                            <div className="text-xs text-muted-foreground">{n.user_email || "System"}</div>
+                          </td>
+                          <td className="py-3 font-medium">{n.title}</td>
+                          <td className="py-3 text-muted-foreground max-w-xs truncate">{n.message}</td>
+                          <td className="py-3 text-right text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
+          </div>
+        )}
+
+        {/* ─── COUPONS ─── */}
+        {tab === "coupons" && (
+          <div className="space-y-6 animate-fade-up">
+            <div className="flex justify-between items-center">
+              <h2 className="eyebrow">Active Discount Codes</h2>
+              <button onClick={handleCreateCoupon} className="text-xs bg-foreground text-background px-4 py-2 uppercase tracking-wider">New Coupon</button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {coupons.map((c) => (
+                <div key={c.id} className="border border-border p-5 bg-secondary/10">
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="font-display text-xl tracking-wider">{c.code}</span>
+                    <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 ${c.active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                      {c.active ? "Active" : "Disabled"}
+                    </span>
+                  </div>
+                  <div className="text-3xl font-display mb-1">{c.discount_pct}% OFF</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-widest">Discount rate</div>
+                </div>
+              ))}
+              {coupons.length === 0 && (
+                <div className="col-span-full py-16 text-center text-sm text-muted-foreground border border-dashed border-border">No coupons found.</div>
               )}
             </div>
           </div>

@@ -14,5 +14,10 @@ router.put("/orders/:orderNumber", asyncHandler(adminController.updateOrder));
 router.get("/customers", asyncHandler(adminController.listCustomers));
 router.get("/messages", asyncHandler(adminController.listMessages));
 router.get("/feedback", asyncHandler(adminController.getFeedback));
+router.get("/notifications", asyncHandler(adminController.listNotifications));
+router.post("/notifications", asyncHandler(adminController.createNotification));
+router.get("/coupons", asyncHandler(adminController.listCoupons));
+router.post("/coupons", asyncHandler(adminController.createCoupon));
+router.delete("/coupons/:id", asyncHandler(adminController.deleteCoupon));
 
 module.exports = router;

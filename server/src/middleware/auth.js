@@ -27,9 +27,10 @@ function authenticate(req, res, next) {
  */
 function requireAdmin(req, res, next) {
   const email = String(req.user?.email || "").toLowerCase();
-  const allowedAdmin = env.adminEmails.includes(email);
+  const isEmailAllowed = env.adminEmails.includes(email);
+  const isRoleAdmin = req.user?.role === "admin";
 
-  if (!req.user || req.user.role !== "admin" || !allowedAdmin) {
+  if (!req.user || (!isRoleAdmin && !isEmailAllowed)) {
     return res.status(403).json({ error: "Admin access required" });
   }
   next();
