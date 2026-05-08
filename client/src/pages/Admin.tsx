@@ -6,6 +6,7 @@ import {
   BarChart3,
   Boxes,
   CheckCircle,
+  ChevronDown,
   Clock,
   DollarSign,
   Edit,
@@ -441,7 +442,25 @@ export default function Admin() {
 
       {/* Tabs */}
       <section className="container-luxe pb-6">
-        <div className="flex gap-1 border-b border-border overflow-x-auto">
+        <div className="relative md:hidden">
+          <select
+            value={tab}
+            onChange={(event) => {
+              const nextTab = event.target.value as Tab;
+              setTab(nextTab);
+              if (nextTab === "orders") fetchOrders(orderFilter);
+              if (nextTab === "dashboard") fetchOrders();
+            }}
+            className="w-full appearance-none border border-border bg-background px-4 py-3 pr-10 text-[13px] uppercase tracking-[0.14em] text-foreground focus:border-foreground focus:outline-none"
+          >
+            {tabs.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
+        </div>
+
+        <div className="hidden gap-1 border-b border-border md:flex">
           {tabs.map((t) => {
             const Icon = t.icon;
             return (

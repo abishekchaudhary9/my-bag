@@ -26,7 +26,10 @@ function authenticate(req, res, next) {
  * Middleware: requires admin role (must be used after authenticate).
  */
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== "admin") {
+  const email = String(req.user?.email || "").toLowerCase();
+  const allowedAdmin = env.adminEmails.includes(email);
+
+  if (!req.user || req.user.role !== "admin" || !allowedAdmin) {
     return res.status(403).json({ error: "Admin access required" });
   }
   next();

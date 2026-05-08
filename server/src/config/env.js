@@ -20,6 +20,22 @@ function parseDatabaseUrl(rawUrl) {
   };
 }
 
+function parseList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function parseJson(value) {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
 const databaseUrl =
   process.env.MYSQL_PUBLIC_URL ||
   process.env.DATABASE_PUBLIC_URL ||
@@ -36,11 +52,20 @@ const database = {
   connectTimeout: parseNumber(process.env.DB_CONNECT_TIMEOUT, 10000),
 };
 
+const firebaseServiceAccount = parseJson(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 module.exports = {
   port: process.env.PORT || 5000,
   clientUrl: process.env.CLIENT_URL || "http://localhost:8080",
   jwtSecret: process.env.JWT_SECRET || "fallback_secret",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "",
+  adminEmails: parseList(process.env.ADMIN_EMAILS),
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID || firebaseServiceAccount?.project_id || "",
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || firebaseServiceAccount?.client_email || "",
+    privateKey: process.env.FIREBASE_PRIVATE_KEY || firebaseServiceAccount?.private_key || "",
+    serviceAccount: firebaseServiceAccount,
+  },
   database,
 };

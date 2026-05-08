@@ -6,7 +6,7 @@ import { Product, products } from "@/data/products";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { productsApi } from "@/lib/api";
-import { Check, ShoppingBag } from "lucide-react";
+import { Check, Heart, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
 
 function isProduct(value: Product | undefined): value is Product {
@@ -43,6 +43,7 @@ export default function Wishlist() {
     () => items.filter((product) => selected.includes(String(product.id))),
     [items, selected]
   );
+  const selectedTotal = selectedItems.reduce((sum, product) => sum + Number(product.price || 0), 0);
 
   const allSelected = items.length > 0 && selected.length === items.length;
 
@@ -148,36 +149,59 @@ export default function Wishlist() {
           </div>
         ) : (
           <>
-            <div className="mb-8 flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-10 border-y border-border py-4">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <button
                 type="button"
                 onClick={toggleAll}
                 className="inline-flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground"
               >
-                <span className={`grid h-5 w-5 place-items-center border ${allSelected ? "border-foreground bg-foreground text-background" : "border-border"}`}>
+                <span className={`grid h-5 w-5 place-items-center border transition-colors ${allSelected ? "border-foreground bg-foreground text-background" : "border-border"}`}>
                   {allSelected && <Check className="h-3.5 w-3.5" />}
                 </span>
                 {allSelected ? "Clear selection" : `Select all ${items.length}`}
               </button>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleAddSelected}
-                  disabled={selectedItems.length === 0}
-                  className="border border-border px-5 py-3 text-[12px] uppercase tracking-[0.16em] transition-colors hover:border-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Add selected to bag
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCheckoutSelected}
-                  disabled={selectedItems.length === 0}
-                  className="inline-flex items-center justify-center gap-2 bg-foreground px-5 py-3 text-[12px] uppercase tracking-[0.16em] text-background transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ShoppingBag className="h-4 w-4" strokeWidth={1.5} />
-                  Checkout selected
-                </button>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className={`border-l-2 pl-4 transition-colors ${selectedItems.length > 0 ? "border-foreground" : "border-border"}`}>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Heart className={`h-4 w-4 ${selectedItems.length > 0 ? "fill-accent text-accent" : "text-muted-foreground"}`} strokeWidth={1.5} />
+                    <span className="font-medium">{selectedItems.length} selected</span>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {selectedItems.length > 0 ? `Rs ${selectedTotal.toLocaleString()} ready for your bag` : "Select pieces to compare or checkout together"}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_auto_auto]">
+                  {selectedItems.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelected([])}
+                      className="inline-flex items-center justify-center gap-2 border border-border px-4 py-3 text-[12px] uppercase tracking-[0.16em] transition-colors hover:border-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleAddSelected}
+                    disabled={selectedItems.length === 0}
+                    className="border border-border px-5 py-3 text-[12px] uppercase tracking-[0.16em] transition-colors hover:border-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Add to bag
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCheckoutSelected}
+                    disabled={selectedItems.length === 0}
+                    className="inline-flex items-center justify-center gap-2 bg-foreground px-5 py-3 text-[12px] uppercase tracking-[0.16em] text-background transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ShoppingBag className="h-4 w-4" strokeWidth={1.5} />
+                    Checkout
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
 
@@ -187,19 +211,38 @@ export default function Wishlist() {
                 const isSelected = selected.includes(id);
 
                 return (
-                  <div key={p.id} className="relative">
+                  <div
+                    key={p.id}
+                    className={`relative transition-all duration-300 ${
+                      isSelected ? "translate-y-[-2px]" : "hover:translate-y-[-1px]"
+                    }`}
+                  >
+                    <div
+                      className={`pointer-events-none absolute -inset-2 z-10 border transition-all duration-300 ${
+                        isSelected
+                          ? "border-foreground bg-background/35 shadow-lift"
+                          : "border-transparent"
+                      }`}
+                    />
                     <button
                       type="button"
+                      aria-pressed={isSelected}
                       aria-label={isSelected ? `Deselect ${p.name}` : `Select ${p.name}`}
                       onClick={() => toggleProduct(id)}
-                      className={`absolute left-3 top-3 z-20 grid h-9 w-9 place-items-center border backdrop-blur-sm transition ${
+                      className={`absolute left-3 top-3 z-30 grid h-9 w-9 place-items-center border backdrop-blur-sm transition ${
                         isSelected
-                          ? "border-foreground bg-foreground text-background"
+                          ? "border-foreground bg-foreground text-background shadow-soft"
                           : "border-border bg-background/85 text-foreground hover:border-foreground"
                       }`}
                     >
                       {isSelected && <Check className="h-4 w-4" />}
                     </button>
+                    {isSelected && (
+                      <div className="pointer-events-none absolute left-3 top-14 z-30 flex items-center gap-2 bg-foreground px-3 py-2 text-background shadow-soft animate-fade-in">
+                        <span className="text-[10px] uppercase tracking-[0.18em]">Selected</span>
+                        <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      </div>
+                    )}
                     <ProductCard product={p} index={i} />
                   </div>
                 );

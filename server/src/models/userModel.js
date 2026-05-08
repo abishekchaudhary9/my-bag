@@ -1,7 +1,10 @@
 function mapUser(row) {
+  const email = String(row.email || "");
+  const isPhoneProxyEmail = /^phone-[^@]+@phone\.maison\.local$/i.test(email);
+
   return {
     id: String(row.id),
-    email: row.email,
+    email: isPhoneProxyEmail ? "" : email,
     firstName: row.first_name,
     lastName: row.last_name,
     role: row.role,
