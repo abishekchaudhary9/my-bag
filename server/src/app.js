@@ -15,10 +15,12 @@ const allowedOrigins = (process.env.CLIENT_URL || env.clientUrl || "http://local
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // If no origin (like mobile apps or curl) or it's in the allowed list, permit it
+    if (!origin || allowedOrigins.some(o => origin.startsWith(o)) || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
+    console.warn(`CORS request blocked from origin: ${origin}`);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,

@@ -192,7 +192,7 @@ async function listCustomers() {
      FROM users u
      LEFT JOIN orders o ON u.id = o.user_id
      WHERE u.role = 'user'
-     GROUP BY u.id, u.first_name, u.last_name, u.email, u.created_at
+     GROUP BY u.id, u.first_name, u.last_name, u.email, u.created_at, u.role
      ORDER BY total_spent DESC`
   );
 

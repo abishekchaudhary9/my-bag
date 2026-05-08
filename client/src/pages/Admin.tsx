@@ -225,7 +225,13 @@ export default function Admin() {
 
   /* ─── Data fetching ─────────────────────────────────── */
   const fetchStats = useCallback(async () => {
-    try { const d = await adminApi.stats(); setStats(d.stats); } catch { /* fallback */ }
+    try { 
+      const d = await adminApi.stats(); 
+      setStats(d.stats); 
+    } catch (err: any) { 
+      console.error("Stats fetch failed:", err);
+      toast.error("Could not load dashboard stats");
+    }
   }, []);
 
   const fetchOrders = useCallback(async (status?: string) => {
