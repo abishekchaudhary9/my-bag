@@ -20,6 +20,7 @@ import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import Orders from "./pages/Orders.tsx";
 import Profile from "./pages/Profile.tsx";
 import Admin from "./pages/Admin.tsx";
+import Verify from "./pages/Verify.tsx";
 import Contact from "./pages/Contact.tsx";
 import About from "./pages/About.tsx";
 import ShippingReturns from "./pages/ShippingReturns.tsx";
@@ -28,6 +29,7 @@ import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
 import SizeGuide from "./pages/SizeGuide.tsx";
 import ScrollToTop from "./components/ScrollToTop.tsx";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute.tsx";
 
 const queryClient = new QueryClient();
 
@@ -52,13 +54,14 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/account" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/verify" element={<Verify />} />
               {/* User */}
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
               {/* Admin */}
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
               {/* Info pages */}
               <Route path="/contact" element={<Contact />} />
               <Route path="/about" element={<About />} />

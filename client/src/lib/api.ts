@@ -173,6 +173,18 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ phone }),
     }),
+  
+  sendOtp: (email: string) =>
+    request<{ message: string }>("/auth/send-otp", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyOtp: (email: string, code: string) =>
+    request<{ success: boolean; message: string }>("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    }),
 };
 
 // ─── Products ────────────────────────────────────────────────

@@ -115,6 +115,8 @@ type AuthCtx = {
   addOrder: (order: Order) => void;
   fetchOrders: () => Promise<void>;
   resendVerificationEmail: () => AuthResult;
+  sendOtp: (email: string) => AuthResult;
+  verifyOtp: (email: string, code: string) => AuthResult;
   isAdmin: boolean;
 };
 
@@ -181,6 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           const { user, token } = await exchangeFirebaseUser();
+          if (!user.emailVerified) {
+             // If not verified, we clear the token but keep the user in state 
+             // so we can show the verify screen
+             setToken(null);
+             if (active) dispatch({ type: "LOGIN", user });
+             return;
+          }
           setToken(token);
           if (active) dispatch({ type: "LOGIN", user });
         } catch {
@@ -304,7 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updateFirebaseProfile(result.user, {
           displayName: `${firstName.trim()} ${lastName.trim()}`.trim(),
         });
-        await sendEmailVerification(result.user);
+        await authApi.sendOtp(email.trim().toLowerCase());
         await finishFirebaseLogin({ firstName, lastName });
         return { success: true };
       } catch (err: unknown) {
@@ -413,6 +422,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: true };
       } catch (err: unknown) {
         return { success: false, error: getErrorMessage(err, "Could not send verification email") };
+      }
+    },
+    sendOtp: async (email) => {
+      try {
+        await authApi.sendOtp(email);
+        return { success: true };
+      } catch (err: unknown) {
+        return { success: false, error: getErrorMessage(err, "Could not send OTP") };
+      }
+    },
+    verifyOtp: async (email, code) => {
+      try {
+        const res = await authApi.verifyOtp(email, code);
+        if (res.success) {
+           // Force refresh Firebase token to pick up the new "verified" status
+           if (auth.currentUser) {
+             await auth.currentUser.getIdToken(true);
+           }
+           // Reload user to get verified status
+           const { user, token } = await exchangeFirebaseUser();
+           setToken(token);
+           dispatch({ type: "LOGIN", user });
+           return { success: true };
+        }
+        return { success: false, error: res.message };
+      } catch (err: unknown) {
+        return { success: false, error: getErrorMessage(err, "Verification failed") };
       }
     },
     isAdmin: state.user?.role === "admin",

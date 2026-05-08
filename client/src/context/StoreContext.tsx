@@ -30,6 +30,7 @@ type Action =
   | { type: "SAVE_LATER"; key: string }
   | { type: "MOVE_TO_CART"; key: string }
   | { type: "WISH_TOGGLE"; product: Product }
+  | { type: "WISH_REMOVE"; id: string }
   | { type: "WISH_SET"; ids: string[]; items: Product[] }
   | { type: "VIEWED"; id: string }
   | { type: "COUPON"; code: string }
@@ -112,6 +113,13 @@ function reducer(state: State, action: Action): State {
           : [product, ...state.wishlistItems.filter((item) => item.id !== product.id)],
       };
     }
+    case "WISH_REMOVE": {
+      return {
+        ...state,
+        wishlist: state.wishlist.filter((id) => id !== action.id),
+        wishlistItems: state.wishlistItems.filter((item) => item.id !== action.id),
+      };
+    }
     case "WISH_SET": {
       return {
         ...state,
@@ -147,6 +155,7 @@ type Ctx = {
   saveForLater: (key: string) => void;
   moveToCart: (key: string) => void;
   toggleWish: (product: Product) => void;
+  removeFromWish: (id: string | number) => void;
   isWished: (id: string | number) => boolean;
   markViewed: (id: string) => void;
   applyCoupon: (code: string) => boolean;
@@ -239,6 +248,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (/^\d+$/.test(id)) {
         const request = shouldAdd ? wishlistApi.toggle(id) : wishlistApi.remove(id);
         request.catch(() => dispatch({ type: "WISH_TOGGLE", product }));
+      }
+    },
+    removeFromWish: (id) => {
+      if (!activeCustomerId) return;
+      const pid = productId(id);
+      if (!state.wishlist.includes(pid)) return;
+
+      dispatch({ type: "WISH_REMOVE", id: pid });
+      if (/^\d+$/.test(pid)) {
+        wishlistApi.remove(pid).catch(() => {
+          // If removal fails, we might want to revert, but usually it's fine for checkout
+        });
       }
     },
     isWished: (id) => Boolean(activeCustomerId) && state.wishlist.includes(productId(id)),

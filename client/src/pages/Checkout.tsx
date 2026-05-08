@@ -16,7 +16,7 @@ const STEPS: { key: Step; label: string; icon: typeof Truck }[] = [
 ];
 
 export default function Checkout() {
-  const { state: cartState, totals, clearCart } = useStore();
+  const { state: cartState, totals, clearCart, removeFromWish } = useStore();
   const { state: authState, addOrder } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("shipping");
@@ -45,6 +45,11 @@ export default function Checkout() {
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
+
+  const handleStepChange = (nextStep: Step) => {
+    setStep(nextStep);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const validateShipping = () => {
     if (!shipping.firstName.trim() || !shipping.lastName.trim() || !shipping.street.trim() || !shipping.city.trim()) {
@@ -189,6 +194,10 @@ export default function Checkout() {
 
       const { order } = await ordersApi.create(orderData);
       addOrder(order);
+      // Remove ordered items from wishlist
+      cartState.cart.forEach((item) => {
+        removeFromWish(item.productId);
+      });
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
     } catch (err: any) {
@@ -212,6 +221,10 @@ export default function Checkout() {
         total: totals.total + (shippingMethod === "express" ? 25 : 0),
       };
       addOrder(fallbackOrder);
+      // Remove ordered items from wishlist
+      cartState.cart.forEach((item) => {
+        removeFromWish(item.productId);
+      });
       clearCart();
       navigate(`/order-confirmation/${fallbackOrder.id}`);
     } finally {
@@ -305,7 +318,7 @@ export default function Checkout() {
               </div>
 
               <button
-                onClick={() => { if (validateShipping()) setStep("payment"); }}
+                onClick={() => { if (validateShipping()) handleStepChange("payment"); }}
                 className="group flex items-center justify-center gap-3 w-full bg-foreground text-background py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500 mt-4"
               >
                 Continue to Payment
@@ -386,14 +399,14 @@ export default function Checkout() {
 
               <div className="flex gap-3 mt-4">
                 <button
-                  onClick={() => setStep("shipping")}
+                  onClick={() => handleStepChange("shipping")}
                   className="flex items-center gap-2 px-6 py-4 border border-border text-[13px] uppercase tracking-[0.18em] hover:border-foreground transition-colors"
                 >
                   <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
                   Back
                 </button>
                 <button
-                  onClick={() => { if (validatePayment()) setStep("review"); }}
+                  onClick={() => { if (validatePayment()) handleStepChange("review"); }}
                   className="group flex-1 flex items-center justify-center gap-3 bg-foreground text-background py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
                 >
                   Review Order
@@ -412,7 +425,7 @@ export default function Checkout() {
               <div className="p-5 bg-secondary/40">
                 <div className="flex items-center justify-between mb-3">
                   <div className="eyebrow">Ship to</div>
-                  <button onClick={() => setStep("shipping")} className="text-xs link-underline text-accent">Edit</button>
+                  <button onClick={() => handleStepChange("shipping")} className="text-xs link-underline text-accent">Edit</button>
                 </div>
                 <div className="text-sm leading-relaxed">
                   {shipping.firstName} {shipping.lastName}<br />
@@ -426,7 +439,7 @@ export default function Checkout() {
               <div className="p-5 bg-secondary/40">
                 <div className="flex items-center justify-between mb-3">
                   <div className="eyebrow">Payment</div>
-                  <button onClick={() => setStep("payment")} className="text-xs link-underline text-accent">Edit</button>
+                  <button onClick={() => handleStepChange("payment")} className="text-xs link-underline text-accent">Edit</button>
                 </div>
                 <div className="text-sm">
                   {payment.method === "card"
@@ -458,7 +471,7 @@ export default function Checkout() {
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setStep("payment")}
+                  onClick={() => handleStepChange("payment")}
                   className="flex items-center gap-2 px-6 py-4 border border-border text-[13px] uppercase tracking-[0.18em] hover:border-foreground transition-colors"
                 >
                   <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
