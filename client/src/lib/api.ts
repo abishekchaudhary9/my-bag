@@ -150,7 +150,19 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     }),
 
-  firebaseLogin: (idToken: string, profile?: { firstName?: string; lastName?: string; phone?: string }) =>
+  firebaseLogin: (
+    idToken: string, 
+    profile?: { 
+      firstName?: string; 
+      lastName?: string; 
+      phone?: string;
+      street?: string;
+      city?: string;
+      state?: string;
+      zip?: string;
+      country?: string;
+    }
+  ) =>
     request<{ user: any; token: string }>("/auth/firebase", {
       method: "POST",
       body: JSON.stringify({ idToken, profile }),

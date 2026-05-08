@@ -1,5 +1,6 @@
 const pool = require("../config/database");
 const { mapOrder } = require("../models/orderModel");
+const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
 
@@ -62,6 +63,8 @@ async function createOrder(user, data) {
   }
 
   await pool.query("DELETE FROM cart_items WHERE user_id = ?", [user.id]);
+
+  emitEvent("admins", "new_order", { orderId: result.insertId });
 
   return {
     id: orderNumber,

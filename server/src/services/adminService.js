@@ -1,10 +1,11 @@
 const pool = require("../config/database");
 const { ORDER_STATUSES } = require("../models/orderStatus");
+const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
 
 async function getStats() {
-  const [[{ totalRevenue }]] = await pool.query("SELECT COALESCE(SUM(total), 0) AS totalRevenue FROM orders");
-  const [[{ totalOrders }]] = await pool.query("SELECT COUNT(*) AS totalOrders FROM orders");
+  const [[{ totalRevenue }]] = await pool.query("SELECT COALESCE(SUM(total), 0) AS totalRevenue FROM orders WHERE status <> 'cancelled'");
+  const [[{ totalOrders }]] = await pool.query("SELECT COUNT(*) AS totalOrders FROM orders WHERE status <> 'cancelled'");
   const [[{ totalCustomers }]] = await pool.query("SELECT COUNT(*) AS totalCustomers FROM users WHERE role = 'user'");
   const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -179,6 +180,11 @@ async function updateOrder(orderNumber, { status, trackingNumber }) {
         `/orders`,
       ]
     );
+  }
+
+  // Real-time: Notify user about the update
+  if (oldOrder) {
+    emitEvent(`user_${oldOrder.user_id}`, "order_update", { orderNumber, status, trackingNumber });
   }
 
   return { message: "Order updated" };

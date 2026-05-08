@@ -56,7 +56,7 @@ const firebaseServiceAccount = parseJson(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 module.exports = {
   port: process.env.PORT || 5000,
-  clientUrl: process.env.CLIENT_URL || "http://localhost:8080",
+  clientUrl: parseList(process.env.CLIENT_URL || "http://localhost:8080, http://127.0.0.1:8080"),
   jwtSecret: process.env.JWT_SECRET || "fallback_secret",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "",
