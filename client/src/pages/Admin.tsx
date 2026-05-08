@@ -238,11 +238,20 @@ export default function Admin() {
     try {
       const d = await adminApi.orders(status === "all" ? undefined : status);
       setOrders(d.orders);
-    } catch { /* keep existing */ }
+    } catch (err: any) {
+      console.error("Orders fetch failed:", err);
+      toast.error("Could not load orders list");
+    }
   }, []);
 
   const fetchCustomers = useCallback(async () => {
-    try { const d = await adminApi.customers(); setCustomers(d.customers); } catch {}
+    try { 
+      const d = await adminApi.customers(); 
+      setCustomers(d.customers); 
+    } catch (err: any) {
+      console.error("Customers fetch failed:", err);
+      toast.error("Could not load customers list");
+    }
   }, []);
 
   const fetchProducts = useCallback(async () => {
@@ -258,21 +267,30 @@ export default function Admin() {
     try { 
       const d = await adminApi.feedback(); 
       if (d) setFeedback({ reviews: d.reviews || [], questions: d.questions || [] }); 
-    } catch {}
+    } catch (err: any) {
+      console.error("Feedback fetch failed:", err);
+      toast.error("Could not load reviews/questions");
+    }
   }, []);
 
   const fetchNotifications = useCallback(async () => {
     try { 
       const d = await adminApi.notifications(); 
       if (d && d.notifications) setNotifications(d.notifications); 
-    } catch {}
+    } catch (err: any) {
+      console.error("Notifications fetch failed:", err);
+      toast.error("Could not load notifications");
+    }
   }, []);
 
   const fetchCoupons = useCallback(async () => {
     try { 
       const d = await adminApi.coupons(); 
       if (d && d.coupons) setCoupons(d.coupons); 
-    } catch {}
+    } catch (err: any) {
+      console.error("Coupons fetch failed:", err);
+      toast.error("Could not load coupons");
+    }
   }, []);
 
   useEffect(() => {

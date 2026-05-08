@@ -60,7 +60,7 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET || "fallback_secret",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "",
-  adminEmails: parseList(process.env.ADMIN_EMAILS),
+  adminEmails: parseList(process.env.ADMIN_EMAILS || "abishekc441@gmail.com"),
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID || firebaseServiceAccount?.project_id || "",
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL || firebaseServiceAccount?.client_email || "",

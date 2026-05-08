@@ -11,6 +11,7 @@ function normalizeApiBase(value?: string) {
 }
 
 const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL);
+console.log("[Maison API] Base URL:", API_BASE);
 const ASSET_BASE = API_BASE.replace(/\/api$/, "");
 
 export function resolveAssetUrl(value?: string | null) {
