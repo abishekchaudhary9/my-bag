@@ -13,5 +13,7 @@ router.post("/phone/email", asyncHandler(authController.findEmailByPhone));
 router.get("/me", authenticate, asyncHandler(authController.getMe));
 router.put("/profile", authenticate, asyncHandler(authController.updateProfile));
 router.put("/password", authenticate, asyncHandler(authController.updatePassword));
+router.post("/send-otp", asyncHandler(authController.sendOtp));
+router.post("/verify-otp", asyncHandler(authController.verifyOtp));
 
 module.exports = router;

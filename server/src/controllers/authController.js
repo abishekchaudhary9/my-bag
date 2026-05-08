@@ -1,4 +1,5 @@
 const authService = require("../services/authService");
+const otpService = require("../services/otpService");
 
 async function signup(req, res) {
   const result = await authService.signup(req.body);
@@ -40,6 +41,16 @@ async function updatePassword(req, res) {
   res.json(result);
 }
 
+async function sendOtp(req, res) {
+  const result = await otpService.generateOtp(req.body.email);
+  res.json(result);
+}
+
+async function verifyOtp(req, res) {
+  const result = await otpService.verifyOtp(req.body.email, req.body.code);
+  res.json(result);
+}
+
 module.exports = {
   signup,
   login,
@@ -49,4 +60,6 @@ module.exports = {
   getMe,
   updateProfile,
   updatePassword,
+  sendOtp,
+  verifyOtp,
 };

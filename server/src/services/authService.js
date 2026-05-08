@@ -63,7 +63,8 @@ async function loginWithFirebase({ idToken, profile = {} }) {
     const firebaseAuth = getFirebaseAuth();
     decoded = await firebaseAuth.verifyIdToken(idToken);
     firebaseUser = await firebaseAuth.getUser(decoded.uid);
-  } catch {
+  } catch (err) {
+    console.error("Firebase Verification Error Details:", err);
     throw createHttpError(401, "Firebase sign-in could not be verified.");
   }
 
@@ -100,11 +101,13 @@ async function loginWithFirebase({ idToken, profile = {} }) {
     const nextFirstName = firstName || existing.first_name;
     const nextLastName = lastName || existing.last_name;
 
+    const isVerified = decoded.email_verified ? 1 : (existing.email_verified ? 1 : 0);
+
     await pool.query(
       `UPDATE users
        SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, phone = COALESCE(?, phone), avatar = COALESCE(?, avatar), email_verified = ?
        WHERE id = ?`,
-      [decoded.uid, nextEmail, nextFirstName, nextLastName, role, phone, avatar, decoded.email_verified ? 1 : 0, existing.id]
+      [decoded.uid, nextEmail, nextFirstName, nextLastName, role, phone, avatar, isVerified, existing.id]
     );
 
     const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [existing.id]);
