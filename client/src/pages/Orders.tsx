@@ -197,11 +197,11 @@ function OrderTracker({ currentStatus }: { currentStatus: string }) {
   const currentIndex = steps.findIndex(s => s.id === currentStatus);
 
   return (
-    <div className="relative">
-      <div className="absolute top-4 left-4 right-4 h-0.5 bg-secondary -z-10" />
+    <div className="relative py-2">
+      <div className="absolute top-[22px] left-8 right-8 h-[2px] bg-secondary -z-10" />
       <div 
-        className="absolute top-4 left-4 h-0.5 bg-foreground -z-10 transition-all duration-1000"
-        style={{ width: currentIndex === -1 ? '0%' : `${(currentIndex / (steps.length - 1)) * 100}%` }}
+        className="absolute top-[22px] left-8 h-[2px] bg-foreground -z-10 transition-all duration-1000 ease-in-out"
+        style={{ width: currentIndex <= 0 ? '0%' : currentIndex === 1 ? '50%' : '100%' }}
       />
       
       <div className="flex justify-between">
@@ -210,15 +210,19 @@ function OrderTracker({ currentStatus }: { currentStatus: string }) {
           const isCurrent = currentIndex === idx;
           
           return (
-            <div key={step.id} className="flex flex-col items-center w-1/3">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center bg-background border-2 transition-colors duration-500 ${isCompleted ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'}`}>
-                {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5 opacity-20" />}
+            <div key={step.id} className="flex flex-col items-center w-1/3 relative">
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center bg-background border-2 transition-all duration-700 ${isCompleted ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'} ${isCurrent ? 'ring-4 ring-foreground/10' : ''}`}>
+                {isCompleted ? (
+                  <CheckCircle2 className={`h-5 w-5 ${isCurrent ? 'animate-pulse' : ''}`} />
+                ) : (
+                  <Circle className="h-5 w-5 opacity-20" />
+                )}
               </div>
-              <div className={`mt-3 text-[11px] uppercase tracking-widest font-semibold ${isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
+              <div className={`mt-3 text-[10px] uppercase tracking-[0.2em] font-bold transition-colors duration-500 ${isCompleted ? 'text-foreground' : 'text-muted-foreground/60'}`}>
                 {step.label}
               </div>
               {isCurrent && (
-                <div className="text-[10px] text-muted-foreground mt-1 text-center max-w-[120px] hidden sm:block animate-fade-in">
+                <div className="text-[10px] text-muted-foreground mt-2 text-center max-w-[120px] hidden sm:block animate-fade-in italic">
                   {step.desc}
                 </div>
               )}

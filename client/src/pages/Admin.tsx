@@ -332,38 +332,26 @@ export default function Admin() {
       fetchNotifications();
     });
 
+    ioSocket.on("new_customer", () => {
+      fetchStats();
+      fetchCustomers();
+      fetchNotifications();
+    });
+
+    ioSocket.on("stock_update", () => {
+      fetchStats(); // Stats might include low stock warnings
+      fetchProducts();
+    });
+
     return () => {
       ioSocket.off("new_order");
       ioSocket.off("new_message");
       ioSocket.off("new_review");
       ioSocket.off("new_question");
+      ioSocket.off("new_customer");
+      ioSocket.off("stock_update");
     };
-  }, [ioSocket, isAdmin, fetchStats, fetchOrders, fetchNotifications, fetchFeedback]);
-
-  /* ─── Auth guard ────────────────────────────────────── */
-  if (state.loading) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="h-8 w-8 animate-spin text-accent" strokeWidth={1} />
-          <div className="eyebrow animate-pulse">Authenticating Admin...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!state.isAuthenticated || !isAdmin) {
-    return (
-      <Layout>
-        <div className="container-luxe py-32 text-center animate-fade-up">
-          <div className="eyebrow mb-4">Restricted</div>
-          <h1 className="font-display text-5xl md:text-6xl">Admin Access Required</h1>
-          <p className="mt-5 text-muted-foreground max-w-md mx-auto">Sign in with an admin account to access this panel.</p>
-          <Link to="/login" className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500">Sign In as Admin</Link>
-        </div>
-      </Layout>
-    );
-  }
+  }, [ioSocket, isAdmin, fetchStats, fetchOrders, fetchNotifications, fetchFeedback, fetchCustomers, fetchProducts]);
 
   /* ─── CRUD handlers ─────────────────────────────────── */
   const handleSaveProduct = async (data: any) => {
@@ -555,6 +543,31 @@ export default function Admin() {
   const deliveredOrders = orders.filter((order) => order.status === "delivered").length;
   const unresolvedFeedback = feedback.reviews.length + feedback.questions.length;
   const recentOrders = orders.slice(0, 6);
+
+  /* ─── Auth guard ────────────────────────────────────── */
+  if (state.loading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="h-8 w-8 animate-spin text-accent" strokeWidth={1} />
+          <div className="eyebrow animate-pulse">Authenticating Admin...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!state.isAuthenticated || !isAdmin) {
+    return (
+      <Layout>
+        <div className="container-luxe py-32 text-center animate-fade-up">
+          <div className="eyebrow mb-4">Restricted</div>
+          <h1 className="font-display text-5xl md:text-6xl">Admin Access Required</h1>
+          <p className="mt-5 text-muted-foreground max-w-md mx-auto">Sign in with an admin account to access this panel.</p>
+          <Link to="/login" className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500">Sign In as Admin</Link>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <AdminLayout>

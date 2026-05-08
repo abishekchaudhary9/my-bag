@@ -6,6 +6,7 @@ const { getFirebaseAuth } = require("../config/firebase");
 const { mapUser } = require("../models/userModel");
 const createHttpError = require("../utils/httpError");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
+const { emitEvent } = require("../lib/socket");
 
 function signToken(user) {
   return jwt.sign(
@@ -138,6 +139,9 @@ async function loginWithFirebase({ idToken, profile = {} }) {
 
   const [createdRows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
   const createdUser = createdRows[0];
+  
+  // Real-time: Notify admins of new customer
+  emitEvent("admins", "new_customer", { customerId: result.insertId, name: `${firstName} ${lastName}` });
   
   // For new signups, we don't return a token if they aren't verified yet
   // This forces the frontend to rely on the 'Verify' screen logic

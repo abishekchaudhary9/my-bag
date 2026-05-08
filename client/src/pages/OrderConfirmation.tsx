@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Check, Package, ArrowRight, Printer, Copy } from "lucide-react";
 import Layout from "@/components/site/Layout";
@@ -6,8 +7,22 @@ import { toast } from "sonner";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
-  const { state, isAdmin } = useAuth();
+  const { state, isAdmin, socket, fetchOrders } = useAuth();
   const order = state.orders.find((o) => o.id === orderId);
+
+  useEffect(() => {
+    if (!socket || !orderId) return;
+    
+    socket.on("order_update", (data) => {
+      if (data.orderNumber === orderId) {
+        fetchOrders();
+      }
+    });
+
+    return () => {
+      socket.off("order_update");
+    };
+  }, [socket, orderId, fetchOrders]);
 
   if (!order) {
     return (
