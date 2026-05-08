@@ -1,22 +1,27 @@
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
 const path = require("path");
 const env = require("./config/env");
+const { initSocket } = require("./lib/socket");
 const initDatabase = require("./config/initDatabase");
 const { healthCheck, databaseHealthCheck } = require("./controllers/healthController");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
+const server = http.createServer(app);
 
-const allowedOrigins = (process.env.CLIENT_URL || env.clientUrl || "http://localhost:5173")
-  .split(",")
+const rawOrigins = process.env.CLIENT_URL || env.clientUrl || "http://localhost:8080, http://127.0.0.1:8080";
+const allowedOrigins = (Array.isArray(rawOrigins) ? rawOrigins : String(rawOrigins).split(","))
   .map((origin) => origin.trim())
   .filter(Boolean);
 
 app.use(cors({
   origin(origin, callback) {
-    // If no origin (like mobile apps or curl) or it's in the allowed list, permit it
-    if (!origin || allowedOrigins.some(o => origin.startsWith(o)) || allowedOrigins.includes(origin)) {
+    // Exact match or match with trailing slash to prevent subdomain hijacking
+    const isAllowed = !origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o + "/"));
+    
+    if (isAllowed) {
       return callback(null, true);
     }
 
@@ -55,8 +60,11 @@ const PORT = process.env.PORT || env.port || 5000;
 if (require.main === module) {
   initDatabase()
     .then(() => {
-      app.listen(PORT, () => {
-        console.log(`Maison API server running on port ${PORT}`);
+      // Initialize Socket.io
+      initSocket(server, allowedOrigins);
+
+      server.listen(PORT, () => {
+        console.log(`Maison API server (with Sockets) running on port ${PORT}`);
         console.log("Health: /api/health");
         console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
       });

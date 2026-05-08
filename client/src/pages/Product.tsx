@@ -525,7 +525,7 @@ function ReviewsSection({ productId, productRating, productReviews }: { productI
                   
                   <div className="mt-2 flex items-center justify-between">
                     <div className="text-[10px] text-muted-foreground">{new Date(r.date).toLocaleDateString()}</div>
-                    {authState.user?.id == r.userId && (
+                    {authState.user?.id === r.userId && (
                       deletingReviewId === r.id ? (
                         <div className="flex items-center gap-3 animate-fade-in">
                           <span className="text-[10px] text-muted-foreground uppercase tracking-widest italic hidden sm:inline">Confirm delete?</span>

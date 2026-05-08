@@ -16,6 +16,8 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 import { authApi, ordersApi, setToken } from "@/lib/api";
+import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 import {
   createRecaptchaVerifier,
   firebaseAuth,
@@ -78,6 +80,7 @@ const initial: AuthState = { user: null, isAuthenticated: false, orders: [], loa
 
 let phoneLoginConfirmation: ConfirmationResult | null = null;
 let phoneResetConfirmation: ConfirmationResult | null = null;
+let signupDataBuffer: any = null;
 
 function reducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
@@ -133,6 +136,8 @@ type AuthCtx = {
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
+
+let socket: Socket | null = null;
 
 function authNotConfigured() {
   return {
@@ -194,17 +199,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const { user, token } = await exchangeFirebaseUser();
+          const { user, token } = await exchangeFirebaseUserWithSocket(signupDataBuffer);
+          signupDataBuffer = null; // Clear buffer after use
           if (!user.emailVerified) {
-             // If not verified, we clear the token but keep the user in state 
-             // so we can show the verify screen
              setToken(null);
              if (active) dispatch({ type: "LOGIN", user });
              return;
           }
           setToken(token);
           if (active) dispatch({ type: "LOGIN", user });
-        } catch {
+        } catch (err) {
+          console.error("Auth Restore Error:", err);
+          signupDataBuffer = null;
           setToken(null);
           if (active) dispatch({ type: "SET_LOADING", loading: false });
         }
@@ -237,11 +243,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [state.isAuthenticated]);
 
+  const exchangeFirebaseUserWithSocket = async (profile?: any) => {
+    const { user, token } = await exchangeFirebaseUser(profile);
+    
+    // Initialize Socket
+    if (!socket) {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      // Remove /api if present for the base socket connection
+      const socketUrl = apiBase.replace(/\/api$/, "");
+      
+      socket = io(socketUrl, { 
+        withCredentials: true,
+        transports: ["websocket", "polling"]
+      });
+      
+      socket.on("connect", () => {
+        console.log("[Socket] Connected to real-time server");
+        if (user.role === "admin") {
+          socket?.emit("join_admin");
+        } else {
+          socket?.emit("join_user", user.id);
+        }
+      });
+
+      socket.on("order_update", (data) => {
+        toast.info(`Order Status Updated`, { 
+          description: `Order #${data.orderNumber} is now ${data.status}.` 
+        });
+        fetchOrders();
+      });
+
+      socket.on("new_order", (data) => {
+        toast.success(`New Order Received!`, { 
+          description: `A new order has been placed (#${data.orderId}).` 
+        });
+      });
+    }
+
+    return { user, token };
+  };
+
   const finishFirebaseLogin = async (
     profile?: { firstName?: string; lastName?: string; phone?: string }
   ) => {
-    const { user, token } = await exchangeFirebaseUser(profile);
-    setToken(token);
+    const { user, token } = await exchangeFirebaseUserWithSocket(profile);
+    if (user.emailVerified) {
+      setToken(token);
+    } else {
+      setToken(null);
+    }
     dispatch({ type: "LOGIN", user });
   };
 
@@ -320,15 +370,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isFirebaseConfigured) return authNotConfigured();
 
       try {
-        const auth = getConfiguredFirebaseAuth();
-        const result = await createUserWithEmailAndPassword(auth, data.email.trim().toLowerCase(), data.password);
-        await updateFirebaseProfile(result.user, {
-          displayName: `${data.firstName.trim()} ${data.lastName.trim()}`.trim(),
-        });
-        
-        // The automatic login triggered by Firebase will cause onAuthStateChanged to run,
-        // which calls exchangeFirebaseUser. We pass the additional data here to ensure it's saved.
-        await finishFirebaseLogin({
+        // Store data in buffer so onAuthStateChanged can pick it up
+        signupDataBuffer = {
           firstName: data.firstName.trim(),
           lastName: data.lastName.trim(),
           phone: data.phone,
@@ -336,7 +379,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           city: data.city,
           zip: data.zip,
           country: data.country || "Nepal"
-        });
+        };
+
+        const auth = getConfiguredFirebaseAuth();
+        await createUserWithEmailAndPassword(auth, data.email.trim().toLowerCase(), data.password);
+        
+        if (auth.currentUser) {
+          await updateFirebaseProfile(auth.currentUser, {
+            displayName: `${data.firstName.trim()} ${data.lastName.trim()}`.trim(),
+          });
+        }
 
         // Send OTP immediately
         await authApi.sendOtp(data.email.trim().toLowerCase());
@@ -417,6 +469,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseAuth) {
         signOut(firebaseAuth).catch(() => {});
       }
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
       setToken(null);
       dispatch({ type: "LOGOUT" });
     },
@@ -462,6 +518,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await authApi.verifyOtp(email, code);
         if (res.success) {
+           const auth = getConfiguredFirebaseAuth();
            // Force refresh Firebase token to pick up the new "verified" status
            if (auth.currentUser) {
              await auth.currentUser.getIdToken(true);

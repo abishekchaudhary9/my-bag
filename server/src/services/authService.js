@@ -138,7 +138,11 @@ async function loginWithFirebase({ idToken, profile = {} }) {
 
   const [createdRows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
   const createdUser = createdRows[0];
-  return { user: mapUser(createdUser), token: signToken(createdUser) };
+  
+  // For new signups, we don't return a token if they aren't verified yet
+  // This forces the frontend to rely on the 'Verify' screen logic
+  const token = createdUser.email_verified ? signToken(createdUser) : null;
+  return { user: mapUser(createdUser), token };
 }
 
 async function findEmailByPhone({ phone }) {
