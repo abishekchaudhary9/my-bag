@@ -159,11 +159,27 @@ async function updateOrder(orderNumber, { status, trackingNumber }) {
     throw createHttpError(400, "Invalid status.");
   }
 
+  const [oldOrderRows] = await pool.query("SELECT user_id, status FROM orders WHERE order_number = ?", [orderNumber]);
+  const oldOrder = oldOrderRows[0];
+
   await pool.query(
     `UPDATE orders SET status = COALESCE(?, status), tracking_number = COALESCE(?, tracking_number)
      WHERE order_number = ?`,
     [status, trackingNumber, orderNumber]
   );
+
+  // If status changed to delivered, notify the user
+  if (status === "delivered" && oldOrder && oldOrder.status !== "delivered") {
+    await pool.query(
+      "INSERT INTO notifications (user_id, title, message, link) VALUES (?, ?, ?, ?)",
+      [
+        oldOrder.user_id,
+        "Order Delivered",
+        `Your order #${orderNumber} has been delivered! We'd love to hear your feedback.`,
+        `/orders`,
+      ]
+    );
+  }
 
   return { message: "Order updated" };
 }
@@ -176,7 +192,7 @@ async function listCustomers() {
      FROM users u
      LEFT JOIN orders o ON u.id = o.user_id
      WHERE u.role = 'user'
-     GROUP BY u.id
+     GROUP BY u.id, u.first_name, u.last_name, u.email, u.created_at
      ORDER BY total_spent DESC`
   );
 

@@ -26,11 +26,17 @@ export default function Header() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (authState.isAuthenticated) {
-      notificationsApi.get().then(d => setNotifications(d.notifications)).catch(() => {});
-    } else {
-      setNotifications([]);
-    }
+    const fetchNotifications = () => {
+      if (authState.isAuthenticated) {
+        notificationsApi.get().then(d => setNotifications(d.notifications)).catch(() => {});
+      } else {
+        setNotifications([]);
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // Poll every minute
+    return () => clearInterval(interval);
   }, [authState.isAuthenticated]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;

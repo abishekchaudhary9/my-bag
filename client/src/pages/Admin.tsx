@@ -518,7 +518,12 @@ export default function Admin() {
               const nextTab = event.target.value as Tab;
               setTab(nextTab);
               if (nextTab === "orders") fetchOrders(orderFilter);
-              if (nextTab === "dashboard") fetchOrders();
+              if (nextTab === "dashboard") { fetchOrders(); fetchStats(); }
+              if (nextTab === "customers") fetchCustomers();
+              if (nextTab === "feedback") fetchFeedback();
+              if (nextTab === "notifications") fetchNotifications();
+              if (nextTab === "coupons") fetchCoupons();
+              if (nextTab === "products") fetchProducts();
             }}
             className="w-full appearance-none border border-border bg-background px-4 py-3 pr-10 text-[13px] uppercase tracking-[0.14em] text-foreground focus:border-foreground focus:outline-none"
           >
@@ -533,7 +538,16 @@ export default function Admin() {
           {tabs.map((t) => {
             const Icon = t.icon;
             return (
-              <button key={t.key} onClick={() => { setTab(t.key); if (t.key === "orders") fetchOrders(orderFilter); if (t.key === "dashboard") fetchOrders(); }}
+              <button key={t.key} onClick={() => { 
+                setTab(t.key); 
+                if (t.key === "orders") fetchOrders(orderFilter); 
+                if (t.key === "dashboard") { fetchOrders(); fetchStats(); }
+                if (t.key === "customers") fetchCustomers();
+                if (t.key === "feedback") fetchFeedback();
+                if (t.key === "notifications") fetchNotifications();
+                if (t.key === "coupons") fetchCoupons();
+                if (t.key === "products") fetchProducts();
+              }}
                 className={`flex items-center gap-2 px-5 py-3 text-[13px] uppercase tracking-[0.14em] border-b-2 whitespace-nowrap transition-colors ${
                   tab === t.key ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}>
@@ -1021,6 +1035,7 @@ export default function Admin() {
                       <th className="pb-3 text-xs text-muted-foreground font-medium">Title</th>
                       <th className="pb-3 text-xs text-muted-foreground font-medium">Message</th>
                       <th className="pb-3 text-xs text-muted-foreground font-medium text-right">Date</th>
+                      <th className="pb-3 text-xs text-muted-foreground font-medium text-right">Actions</th>
                     </tr></thead>
                     <tbody>
                       {notifications.map((n) => (
@@ -1032,6 +1047,20 @@ export default function Admin() {
                           <td className="py-3 font-medium">{n.title}</td>
                           <td className="py-3 text-muted-foreground max-w-xs truncate">{n.message}</td>
                           <td className="py-3 text-right text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString()}</td>
+                          <td className="py-3 text-right">
+                            {n.link && (
+                              <button 
+                                onClick={() => {
+                                  if (n.link === "/orders") setTab("orders");
+                                  else if (n.link === "/admin") setTab("dashboard");
+                                  else window.location.href = n.link;
+                                }}
+                                className="text-xs text-accent font-medium hover:underline"
+                              >
+                                View
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
