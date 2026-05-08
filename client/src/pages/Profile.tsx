@@ -12,7 +12,7 @@ import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } fr
 type Tab = "overview" | "settings" | "addresses" | "security";
 
 export default function Profile() {
-  const { state, logout, updateProfile, changePassword, isAdmin } = useAuth();
+  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin } = useAuth();
   const { state: storeState } = useStore();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
@@ -109,6 +109,35 @@ export default function Profile() {
           </div>
         </div>
       </section>
+      
+      {!user.emailVerified && user.email && (
+        <section className="container-luxe mb-8">
+          <div className="bg-accent/5 border border-accent/20 p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-up">
+            <div className="flex gap-4">
+              <div className="h-10 w-10 rounded-full bg-accent/10 grid place-items-center flex-shrink-0">
+                <Bell className="h-5 w-5 text-accent" strokeWidth={1.5} />
+              </div>
+              <div>
+                <div className="text-sm font-medium">Verify your email address</div>
+                <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                  Please verify your email to secure your account and receive order updates. 
+                  Check your inbox for the link we sent.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={async () => {
+                const res = await resendVerificationEmail();
+                if (res.success) toast.success("Verification link sent!");
+                else toast.error(res.error || "Failed to send link");
+              }}
+              className="text-[11px] uppercase tracking-[0.14em] px-5 py-2.5 bg-foreground text-background hover:bg-accent transition-colors"
+            >
+              Resend Link
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Quick Stats */}
       <section className="container-luxe pb-6">

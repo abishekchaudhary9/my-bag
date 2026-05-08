@@ -58,7 +58,7 @@ export default function Signup() {
         lastName: form.lastName.trim(),
       });
       if (result.success) {
-        toast.success("Welcome to Maison", { description: "Your account has been created." });
+        toast.success("Welcome to Maison", { description: "Your account has been created. Please check your email to verify your account." });
         navigate("/profile");
       } else {
         setError(result.error ?? "Something went wrong");

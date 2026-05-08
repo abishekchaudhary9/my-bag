@@ -13,6 +13,7 @@ import {
   signOut,
   updatePassword,
   updateProfile as updateFirebaseProfile,
+  sendEmailVerification,
 } from "firebase/auth";
 import { authApi, ordersApi, setToken } from "@/lib/api";
 import {
@@ -40,6 +41,7 @@ export type User = {
     zip: string;
     country: string;
   };
+  emailVerified: boolean;
   createdAt: string;
 };
 
@@ -112,6 +114,7 @@ type AuthCtx = {
   updateProfile: (updates: Partial<User>) => Promise<void>;
   addOrder: (order: Order) => void;
   fetchOrders: () => Promise<void>;
+  resendVerificationEmail: () => AuthResult;
   isAdmin: boolean;
 };
 
@@ -301,6 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updateFirebaseProfile(result.user, {
           displayName: `${firstName.trim()} ${lastName.trim()}`.trim(),
         });
+        await sendEmailVerification(result.user);
         await finishFirebaseLogin({ firstName, lastName });
         return { success: true };
       } catch (err: unknown) {
@@ -401,6 +405,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     addOrder: (order) => dispatch({ type: "ADD_ORDER", order }),
     fetchOrders,
+    resendVerificationEmail: async () => {
+      const auth = getConfiguredFirebaseAuth();
+      if (!auth.currentUser) return { success: false, error: "No user logged in" };
+      try {
+        await sendEmailVerification(auth.currentUser);
+        return { success: true };
+      } catch (err: unknown) {
+        return { success: false, error: getErrorMessage(err, "Could not send verification email") };
+      }
+    },
     isAdmin: state.user?.role === "admin",
   };
 
