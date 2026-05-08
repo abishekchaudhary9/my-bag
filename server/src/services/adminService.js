@@ -9,10 +9,10 @@ async function getStats() {
   const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   return {
-    revenue: parseFloat(totalRevenue),
-    orders: totalOrders,
-    customers: totalCustomers,
-    avgOrder: Math.round(avgOrder * 100) / 100,
+    revenue: parseFloat(totalRevenue) || 0,
+    orders: totalOrders || 0,
+    customers: totalCustomers || 0,
+    avgOrder: Math.round(avgOrder * 100) / 100 || 0,
   };
 }
 
@@ -36,12 +36,13 @@ async function listOrders(status) {
       id: order.order_number,
       customer: `${order.first_name} ${order.last_name.charAt(0)}.`,
       customerEmail: order.email,
-      customerPhone: order.phone || "",
-      customerAddress: [order.street, order.city, order.state, order.zip, order.country].filter(Boolean).join(", "),
+      customerPhone: order.shipping_phone || order.phone || "",
+      customerAddress: [order.shipping_street, order.shipping_city, order.shipping_state, order.shipping_zip, order.shipping_country]
+        .filter(Boolean).join(", ") || [order.street, order.city, order.state, order.zip, order.country].filter(Boolean).join(", "),
       items: items.length,
       total: `Rs ${parseFloat(order.total).toFixed(2)}`,
       status: order.status,
-      date: order.created_at.toISOString().split("T")[0],
+      date: new Date(order.created_at).toISOString().split("T")[0],
       trackingNumber: order.tracking_number,
     });
   }
@@ -106,8 +107,8 @@ async function getOrderDetails(orderNumber) {
   return {
     id: order.order_number,
     internalId: order.id,
-    date: order.created_at.toISOString().split("T")[0],
-    createdAt: order.created_at,
+    date: new Date(order.created_at).toISOString().split("T")[0],
+    createdAt: new Date(order.created_at),
     status: order.status,
     trackingNumber: order.tracking_number || "",
     paymentMethod: order.payment_method || "card",
@@ -240,6 +241,43 @@ async function getFeedback() {
   };
 }
 
+
+async function listNotifications() {
+  const [rows] = await pool.query(
+    `SELECT n.*, u.email AS user_email, u.first_name, u.last_name
+     FROM notifications n
+     JOIN users u ON n.user_id = u.id
+     ORDER BY n.created_at DESC LIMIT 100`
+  );
+  return rows;
+}
+
+async function createNotification({ userId, title, message, link }) {
+  await pool.query(
+    "INSERT INTO notifications (user_id, title, message, link) VALUES (?, ?, ?, ?)",
+    [userId, title, message, link || null]
+  );
+  return { message: "Notification sent" };
+}
+
+async function listCoupons() {
+  const [rows] = await pool.query("SELECT * FROM coupons ORDER BY created_at DESC");
+  return rows;
+}
+
+async function createCoupon({ code, discount_pct, active }) {
+  await pool.query(
+    "INSERT INTO coupons (code, discount_pct, active) VALUES (?, ?, ?)",
+    [code.toUpperCase(), discount_pct, active ? 1 : 0]
+  );
+  return { message: "Coupon created" };
+}
+
+async function deleteCoupon(id) {
+  await pool.query("DELETE FROM coupons WHERE id = ?", [id]);
+  return { message: "Coupon deleted" };
+}
+
 module.exports = {
   getStats,
   listOrders,
@@ -248,4 +286,9 @@ module.exports = {
   listCustomers,
   listMessages,
   getFeedback,
+  listNotifications,
+  createNotification,
+  listCoupons,
+  createCoupon,
+  deleteCoupon,
 };
