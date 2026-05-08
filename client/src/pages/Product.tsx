@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { Heart, Minus, Plus, Star, Truck, RotateCcw, Shield } from "lucide-react";
+import { Heart, Minus, Plus, Star, Truck, RotateCcw, Shield, CheckCircle2, Circle } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProduct, products, recommend } from "@/data/products";
@@ -312,15 +312,9 @@ function Perk({ icon: Icon, label }: { icon: typeof Truck; label: string }) {
   );
 }
 
-const SAMPLE_REVIEWS = [
-  { id: 0, name: "Elena R.", rating: 5, title: "Better in person", text: "The leather is exceptional. Soft, structured, and the stitching is impeccable. Worth every cent." },
-  { id: 1, name: "Marcus T.", rating: 5, title: "Made for daily life", text: "I've carried this every day for three months and it's only gotten more beautiful. The patina is incredible." },
-  { id: 2, name: "Aiko S.", rating: 4, title: "Quietly luxurious", text: "Exactly the understated piece I was looking for. The cognac shade is perfect — warm without being loud." },
-];
-
 function ReviewsSection({ productId, productRating, productReviews }: { productId: string; productRating: number; productReviews: number }) {
   const { state: authState, isAdmin } = useAuth();
-  const [reviews, setReviews] = useState<any[]>(SAMPLE_REVIEWS);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [avgRating, setAvgRating] = useState(productRating || 0);
   const [totalReviews, setTotalReviews] = useState(productReviews || 0);
   const [showForm, setShowForm] = useState(false);
@@ -350,7 +344,6 @@ function ReviewsSection({ productId, productRating, productReviews }: { productI
       })
       .catch(() => {});
 
-    // Check if logged-in user can review
     if (authState.isAuthenticated && !isAdmin) {
       reviewsApi.checkEligibility(productId)
         .then((d) => { setEligible(d.eligible); setEligibilityReason(d.reason); })
@@ -440,7 +433,6 @@ function ReviewsSection({ productId, productRating, productReviews }: { productI
           </div>
           <div className="text-sm text-muted-foreground mt-2">{totalReviews} verified reviews</div>
 
-          {/* Review button / status */}
           {authState.isAuthenticated && !isAdmin && eligible === true && !showForm && (
             <button onClick={() => setShowForm(true)} className="mt-6 bg-foreground text-background px-5 py-2.5 text-[11px] uppercase tracking-[0.16em] hover:bg-accent transition-colors">
               Write a Review
@@ -458,7 +450,6 @@ function ReviewsSection({ productId, productRating, productReviews }: { productI
           )}
         </div>
         <div className="md:col-span-8 space-y-8">
-          {/* Review Form */}
           {showForm && (
             <form onSubmit={handleSubmit} className="p-6 bg-secondary/30 border border-border space-y-4 animate-fade-up">
               <div className="eyebrow">Your Review</div>
@@ -492,9 +483,12 @@ function ReviewsSection({ productId, productRating, productReviews }: { productI
             </form>
           )}
 
-          {/* Review List */}
+          {reviews.length === 0 && !showForm && (
+            <div className="text-sm text-muted-foreground italic py-10 text-center border border-dashed border-border">No reviews yet. Be the first to share your experience!</div>
+          )}
+
           {reviews.map((r) => (
-            <article key={r.id} className="hairline pb-8 last:border-0 relative">
+            <article id={`review-${r.id}`} key={r.id} className="hairline pb-8 last:border-0 relative target:bg-accent/5 target:p-4 transition-all duration-1000">
               {editingReviewId === r.id ? (
                 <form onSubmit={handleEditReviewSubmit} className="p-6 bg-secondary/30 border border-border space-y-4 animate-fade-in">
                   <div className="eyebrow">Edit Review</div>
@@ -656,7 +650,7 @@ function QuestionsSection({ productId }: { productId: string }) {
   };
 
   if (questions.length === 0 && !authState.isAuthenticated) {
-    return null; // hide if empty and not logged in to save space
+    return null;
   }
 
   return (
@@ -699,7 +693,7 @@ function QuestionsSection({ productId }: { productId: string }) {
           )}
 
           {questions.map((q) => (
-            <article key={q.id} className="hairline pb-8 last:border-0 relative">
+            <article id={`question-${q.id}`} key={q.id} className="hairline pb-8 last:border-0 relative target:bg-accent/5 target:p-4 transition-all duration-1000">
               {editingQuestionId === q.id ? (
                 <form onSubmit={handleEditQuestionSubmit} className="p-6 bg-secondary/30 border border-border space-y-4 animate-fade-in">
                   <div className="eyebrow">Edit Question</div>

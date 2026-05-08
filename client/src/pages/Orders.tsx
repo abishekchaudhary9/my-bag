@@ -148,11 +148,20 @@ export default function Orders() {
                       )}
                       <Link
                         to={`/order-confirmation/${order.id}`}
-                        className="flex items-center gap-2 text-xs text-accent link-underline"
+                        className="flex items-center gap-2 text-xs text-muted-foreground link-underline"
                       >
                         <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
                         View
                       </Link>
+                      {order.status === "delivered" && order.items.length > 0 && (
+                        <Link
+                          to={`/product/${order.items[0].name.toLowerCase().replace(/\s+/g, '-')}`}
+                          className="flex items-center gap-2 text-xs text-accent link-underline font-semibold"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          Write Review
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </article>

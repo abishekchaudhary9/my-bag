@@ -36,10 +36,26 @@ async function createQuestion(userId, productId, { text }) {
     throw createHttpError(404, "Product not found.");
   }
 
-  await pool.query(
+  const [result] = await pool.query(
     "INSERT INTO product_questions (product_id, user_id, question_text) VALUES (?, ?, ?)",
     [productId, userId, text]
   );
+  const questionId = result.insertId;
+
+  // Notify Admins
+  const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+  const [productInfo] = await pool.query("SELECT name, slug FROM products WHERE id = ?", [productId]);
+
+  if (admins.length > 0 && productInfo.length > 0) {
+    for (const admin of admins) {
+      await createNotification(
+        admin.id,
+        "New Product Question",
+        `A customer asked a question about the ${productInfo[0].name}.`,
+        `/product/${productInfo[0].slug}#question-${questionId}`
+      );
+    }
+  }
 
   return { message: "Question submitted successfully." };
 }

@@ -105,12 +105,29 @@ async function createReview(userId, productId, { rating, title, body }) {
     throw createHttpError(403, "You can only review products from delivered orders.");
   }
 
-  await pool.query(
+  const [result] = await pool.query(
     "INSERT INTO product_reviews (product_id, user_id, rating, title, body) VALUES (?, ?, ?, ?, ?)",
     [productId, userId, rating, title, body]
   );
+  const reviewId = result.insertId;
 
   await updateProductRating(productId);
+
+  // Notify Admins
+  const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+  const [productInfo] = await pool.query("SELECT name, slug FROM products WHERE id = ?", [productId]);
+  
+  if (admins.length > 0 && productInfo.length > 0) {
+    for (const admin of admins) {
+      await createNotification(
+        admin.id,
+        "New Product Review",
+        `A customer left a review for the ${productInfo[0].name}.`,
+        `/product/${productInfo[0].slug}#review-${reviewId}`
+      );
+    }
+  }
+
   return { message: "Review submitted successfully." };
 }
 
