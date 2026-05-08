@@ -25,15 +25,20 @@ export function resolveAssetUrl(value?: string | null) {
     return `${ASSET_BASE}${trimmed}`;
   }
 
-  // If it's just a filename like "product.jpg", prefix it with the backend image path
-  if (!trimmed.startsWith("/") && !trimmed.includes(".")) {
-     // Likely not a file
-     return trimmed;
+  // If it contains an '@', it's likely an email address. Never transform emails.
+  if (trimmed.includes("@")) {
+    return trimmed;
   }
 
-  if (!trimmed.startsWith("/") && trimmed.includes(".")) {
+  // Only transform if it looks like an image file (has an extension like .jpg, .png, etc.)
+  const imageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
+  const hasImageExtension = imageExtensions.some(ext => trimmed.toLowerCase().endsWith(ext));
+
+  if (!trimmed.startsWith("/") && hasImageExtension) {
     return `${ASSET_BASE}/images/${trimmed}`;
   }
+
+  return trimmed;
 }
 
 function normalizeAssetUrls<T>(value: T): T {
