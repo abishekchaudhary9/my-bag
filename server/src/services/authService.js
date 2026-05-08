@@ -105,9 +105,18 @@ async function loginWithFirebase({ idToken, profile = {} }) {
 
     await pool.query(
       `UPDATE users
-       SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, phone = COALESCE(?, phone), avatar = COALESCE(?, avatar), email_verified = ?
+       SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, 
+           phone = COALESCE(?, phone), avatar = COALESCE(?, avatar), email_verified = ?,
+           street = COALESCE(?, street), city = COALESCE(?, city), state = COALESCE(?, state), 
+           zip = COALESCE(?, zip), country = COALESCE(?, country)
        WHERE id = ?`,
-      [decoded.uid, nextEmail, nextFirstName, nextLastName, role, phone, avatar, isVerified, existing.id]
+      [
+        decoded.uid, nextEmail, nextFirstName, nextLastName, role, 
+        phone, avatar, isVerified,
+        profile.street || null, profile.city || null, profile.state || null,
+        profile.zip || null, profile.country || null,
+        existing.id
+      ]
     );
 
     const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [existing.id]);
@@ -116,9 +125,15 @@ async function loginWithFirebase({ idToken, profile = {} }) {
   }
 
   const [result] = await pool.query(
-    `INSERT INTO users (firebase_uid, email, password_hash, first_name, last_name, role, phone, avatar, country, email_verified)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [decoded.uid, dbEmail, `firebase:${decoded.uid}`, firstName, lastName, role, phone, avatar, DEFAULT_COUNTRY, decoded.email_verified ? 1 : 0]
+    `INSERT INTO users (firebase_uid, email, password_hash, first_name, last_name, role, phone, avatar, street, city, state, zip, country, email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      decoded.uid, dbEmail, `firebase:${decoded.uid}`, firstName, lastName, role, 
+      phone, avatar, 
+      profile.street || null, profile.city || null, profile.state || null, 
+      profile.zip || null, profile.country || null,
+      decoded.email_verified ? 1 : 0
+    ]
   );
 
   const [createdRows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
