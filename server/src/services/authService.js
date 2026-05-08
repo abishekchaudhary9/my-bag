@@ -102,9 +102,9 @@ async function loginWithFirebase({ idToken, profile = {} }) {
 
     await pool.query(
       `UPDATE users
-       SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, phone = COALESCE(?, phone), avatar = COALESCE(?, avatar)
+       SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, phone = COALESCE(?, phone), avatar = COALESCE(?, avatar), email_verified = ?
        WHERE id = ?`,
-      [decoded.uid, nextEmail, nextFirstName, nextLastName, role, phone, avatar, existing.id]
+      [decoded.uid, nextEmail, nextFirstName, nextLastName, role, phone, avatar, decoded.email_verified ? 1 : 0, existing.id]
     );
 
     const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [existing.id]);
@@ -113,9 +113,9 @@ async function loginWithFirebase({ idToken, profile = {} }) {
   }
 
   const [result] = await pool.query(
-    `INSERT INTO users (firebase_uid, email, password_hash, first_name, last_name, role, phone, avatar, country)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [decoded.uid, dbEmail, `firebase:${decoded.uid}`, firstName, lastName, role, phone, avatar, DEFAULT_COUNTRY]
+    `INSERT INTO users (firebase_uid, email, password_hash, first_name, last_name, role, phone, avatar, country, email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [decoded.uid, dbEmail, `firebase:${decoded.uid}`, firstName, lastName, role, phone, avatar, DEFAULT_COUNTRY, decoded.email_verified ? 1 : 0]
   );
 
   const [createdRows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);

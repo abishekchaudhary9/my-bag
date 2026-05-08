@@ -19,6 +19,7 @@ function mapUser(row) {
           country: row.country,
         }
       : undefined,
+    emailVerified: !!row.email_verified,
     createdAt: row.created_at,
   };
 }

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
   state VARCHAR(100) DEFAULT NULL,
   zip VARCHAR(20) DEFAULT NULL,
   country VARCHAR(100) DEFAULT 'Nepal',
+  email_verified TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -232,6 +233,7 @@ async function init() {
     console.log("Connected to MySQL. Creating database and tables...");
     await conn.query(SCHEMA);
     await ensureColumn(conn, "users", "firebase_uid", "firebase_uid VARCHAR(128) DEFAULT NULL UNIQUE AFTER id");
+    await ensureColumn(conn, "users", "email_verified", "email_verified TINYINT(1) DEFAULT 0 AFTER country");
     console.log("Tables created successfully.");
 
     // Seed products
