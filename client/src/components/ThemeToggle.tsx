@@ -12,7 +12,7 @@ export function ThemeToggle() {
   ] as const;
 
   return (
-    <div className="flex items-center gap-1 bg-secondary/30 p-1 rounded-full border border-border/50 relative overflow-hidden">
+    <div className="flex items-center gap-1 bg-background/10 dark:bg-white/10 backdrop-blur-md p-1 rounded-full border border-white/5 dark:border-white/10 relative overflow-hidden shadow-sm">
       {options.map((opt) => {
         const Icon = opt.icon;
         const isActive = theme === opt.id;
@@ -30,7 +30,7 @@ export function ThemeToggle() {
             {isActive && (
               <motion.div
                 layoutId="activeTheme"
-                className="absolute inset-0 bg-background shadow-lift rounded-full z-0"
+                className="absolute inset-0 bg-background dark:bg-white/20 shadow-sm rounded-full z-0"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}

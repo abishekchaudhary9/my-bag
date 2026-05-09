@@ -187,24 +187,36 @@ export default function ProductPage() {
               )}
 
               <div className="flex gap-4 pt-4">
-                <button 
-                  onClick={() => {
-                    if (!authState.isAuthenticated) { navigate("/login"); return; }
-                    addToCart(product, { color: color.name, size: size || "Universal", qty });
-                    toast.success("Added to Bag", { description: product.name });
-                  }}
-                  className="flex-1 bg-foreground text-background h-16 text-[11px] font-bold uppercase tracking-[0.3em] hover:bg-accent transition-all duration-500 flex items-center justify-center gap-4 group"
-                >
-                  Add to Bag
-                  <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" />
-                </button>
-                {canUseWishlist && (
-                  <button 
-                    onClick={() => toggleWish(product)}
-                    className={`h-16 w-16 glass flex items-center justify-center transition-all ${isWished(product.id) ? 'text-accent' : 'hover:text-accent'}`}
+                {!isAdmin ? (
+                  <>
+                    <button 
+                      onClick={() => {
+                        if (!authState.isAuthenticated) { navigate("/login"); return; }
+                        addToCart(product, { color: color.name, size: size || "Universal", qty });
+                        toast.success("Added to Bag", { description: product.name });
+                      }}
+                      className="flex-1 bg-foreground text-background h-16 text-[11px] font-bold uppercase tracking-[0.3em] hover:bg-accent transition-all duration-500 flex items-center justify-center gap-4 group"
+                    >
+                      Add to Bag
+                      <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" />
+                    </button>
+                    {canUseWishlist && (
+                      <button 
+                        onClick={() => toggleWish(product)}
+                        className={`h-16 w-16 glass flex items-center justify-center transition-all ${isWished(product.id) ? 'text-accent' : 'hover:text-accent'}`}
+                      >
+                        <Heart className={`h-5 w-5 ${isWished(product.id) ? 'fill-current' : ''}`} />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <Link 
+                    to="/admin?tab=products"
+                    className="flex-1 bg-secondary text-foreground h-16 text-[11px] font-bold uppercase tracking-[0.3em] border border-border flex items-center justify-center gap-4 hover:bg-secondary/80 transition-all"
                   >
-                    <Heart className={`h-5 w-5 ${isWished(product.id) ? 'fill-current' : ''}`} />
-                  </button>
+                    Management: Edit in Admin Panel
+                    <Shield className="h-4 w-4" />
+                  </Link>
                 )}
               </div>
             </div>

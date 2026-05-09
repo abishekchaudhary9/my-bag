@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu } from "lucide-react";
+import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu, ChevronRight } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
@@ -36,119 +36,164 @@ export default function Header() {
   const suggestions = q
     ? products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 5)
     : [];
-  
+
   const iconButtonClass = "flex h-10 w-10 shrink-0 items-center justify-center hover:text-accent transition-all duration-300 rounded-full hover:bg-secondary/20";
   const canUseWishlist = authState.isAuthenticated && !isAdmin;
 
   return (
-    <motion.header 
-      ref={headerRef}
-      style={{ height: headerHeight, backgroundColor: headerBg, backdropFilter: headerBlur }}
-      className="sticky top-0 z-50 transition-all duration-500 flex items-center border-b border-border/10"
-    >
-      <div className="container-luxe flex items-center justify-between w-full">
-        {/* LEFT: Mobile Menu & Search */}
-        <div className="flex-1 flex justify-start items-center gap-2">
-          <button 
-            className="lg:hidden p-2 hover:bg-secondary/20 rounded-full transition-colors"
-            onClick={() => setIsMobileMenuOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <button
+    <>
+      <motion.header
+        ref={headerRef}
+        style={{ height: headerHeight, backgroundColor: headerBg, backdropFilter: headerBlur }}
+        className="sticky top-0 z-50 transition-all duration-500 flex items-center border-b border-border/10"
+      >
+        <div className="container-luxe flex items-center justify-between w-full h-full relative">
+          {/* LEFT: Menu & Search */}
+          <div className="flex items-center gap-1 sm:gap-2 z-10">
+            <button
+              className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm lg:hidden flex items-center justify-center"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open Menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <button
             aria-label="Search"
             onClick={() => setIsSearchOpen(true)}
-            className="hidden sm:flex h-10 w-10 items-center justify-center hover:bg-secondary/20 rounded-full transition-colors"
+            className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
           >
             <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
           </button>
-        </div>
-
-        {/* CENTER: Logo */}
-        <div className="flex-[2] flex justify-center">
-          <Link to="/" className="font-display text-2xl sm:text-3xl tracking-tighter relative group overflow-hidden py-1">
-            <span className="inline-block transition-transform duration-700 group-hover:-translate-y-full">MAISON</span>
-            <span className="absolute left-0 top-full inline-block transition-transform duration-700 group-hover:-translate-y-full text-accent">MAISON</span>
-          </Link>
-        </div>
-
-        {/* RIGHT: Utilities */}
-        <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2">
-          <div className="hidden md:block">
-            <ThemeToggle />
           </div>
 
-          <div className="relative">
-            <button
+          {/* CENTER: Logo - Absolutely centered for symmetry */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            <motion.div 
+              className="font-display text-2xl sm:text-3xl tracking-tighter cursor-pointer py-1"
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
-                if (!authState.isAuthenticated) navigate("/login");
-                else setShowUserMenu(!showUserMenu);
+                // We keep the click logic but the animation is the focus
+                navigate("/");
               }}
-              className={iconButtonClass}
             >
-              <User className="h-[18px] w-[18px]" strokeWidth={1.5} />
-            </button>
-            <AnimatePresence>
-              {showUserMenu && authState.isAuthenticated && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-56 glass shadow-lift p-2 origin-top-right z-50 overflow-hidden"
-                >
-                  <div className="py-2 px-4 border-b border-border/50 mb-1">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
-                    <div className="text-sm font-medium truncate">{authState.user?.email}</div>
-                  </div>
-                  {isAdmin ? (
-                    <Link to="/admin" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary/30 transition-colors">
-                      <Shield className="h-4 w-4" /> Admin Panel
-                    </Link>
-                  ) : (
-                    <Link to="/profile" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary/30 transition-colors">
-                      <User className="h-4 w-4" /> My Profile
-                    </Link>
-                  )}
-                  <button 
-                    onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }} 
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/5 transition-colors"
-                  >
-                    <LogOut className="h-4 w-4" /> Sign Out
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              <motion.span 
+                animate={{ color: "hsl(var(--foreground))" }}
+                whileTap={{ 
+                  color: [
+                    "hsl(var(--foreground))", 
+                    "hsl(var(--accent))", 
+                    "hsl(var(--foreground))"
+                  ],
+                }}
+                transition={{ 
+                  duration: 1.2, 
+                  ease: "easeInOut",
+                  times: [0, 0.5, 1]
+                }}
+                className="hover:text-accent/40 transition-colors duration-500"
+              >
+                MAISON
+              </motion.span>
+            </motion.div>
           </div>
 
-          {canUseWishlist ? (
-            <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
-              <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
-              {state.wishlist.length > 0 ? (
-                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
-                  {state.wishlist.length}
-                </span>
-              ) : null}
-            </Link>
-          ) : null}
-          <Link to="/cart" aria-label="Cart" className={`${iconButtonClass} relative`}>
-            <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
-            {totals.count > 0 ? (
-              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-foreground text-background text-[10px] flex items-center justify-center font-medium">
-                {totals.count}
-              </span>
-            ) : null}
-          </Link>
+          {/* RIGHT: Essential Utilities */}
+          <div className="flex items-center gap-1 sm:gap-2 z-10">
+            <div className="hidden lg:flex items-center gap-2">
+              <ThemeToggle />
+              {canUseWishlist && (
+                <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
+                  <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  {state.wishlist.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
+                      {state.wishlist.length}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </div>
+
+            {/* User Account - Visible on mobile with new style */}
+            <div className="relative group">
+              <button
+                onClick={() => {
+                  if (!authState.isAuthenticated) navigate("/login");
+                  else setShowUserMenu(!showUserMenu);
+                }}
+                className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
+              >
+                <User className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+              <AnimatePresence>
+                {showUserMenu && authState.isAuthenticated && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-64 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-2 origin-top-right z-50 overflow-hidden"
+                  >
+                    <motion.div 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="py-3 px-4 border-b border-border/50 mb-1"
+                    >
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
+                      <div className="text-sm font-medium truncate">{authState.user?.email}</div>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      {isAdmin ? (
+                        <Link to="/admin" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors rounded-lg">
+                          <Shield className="h-4 w-4" /> Admin Panel
+                        </Link>
+                      ) : (
+                        <Link to="/profile" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors rounded-lg">
+                          <User className="h-4 w-4" /> My Profile
+                        </Link>
+                      )}
+                    </motion.div>
+
+                    <motion.button
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 }}
+                      onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+                    >
+                      <LogOut className="h-4 w-4" /> Sign Out
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {!isAdmin && (
+              <Link to="/cart" aria-label="Cart" className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
+                <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
+                {totals.count > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-foreground text-background text-[10px] flex items-center justify-center font-medium">
+                    {totals.count}
+                  </span>
+                )}
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.header>
 
       {/* SEARCH OVERLAY */}
       <AnimatePresence>
         {isSearchOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-0 left-0 w-full bg-background border-b border-border shadow-2xl z-50"
+            className="fixed top-0 left-0 w-full bg-background border-b border-border shadow-2xl z-[150]"
           >
             <div className="container-luxe py-8">
               <div className="flex items-center gap-6">
@@ -196,55 +241,122 @@ export default function Header() {
         )}
       </AnimatePresence>
 
-      {/* MOBILE MENU */}
+      {/* MOBILE MENU DRAWER */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-0 bg-background z-[100] lg:hidden flex flex-col"
-          >
-            <div className="p-6 flex items-center justify-between border-b border-border">
-              <div className="font-display text-2xl tracking-tighter">MAISON</div>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-secondary rounded-full">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <nav className="flex-1 overflow-y-auto p-8 space-y-8">
-              {nav.map((item, i) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 + i * 0.1, duration: 0.8 }}
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[150] lg:hidden"
+            />
+            <motion.div 
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-[85%] sm:w-[60%] md:w-[45%] bg-background z-[160] lg:hidden flex flex-col shadow-2xl border-r border-border"
+            >
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.8 }}
+                className="p-6 flex items-center justify-between border-b border-border"
+              >
+                <div className="font-display text-2xl tracking-tighter">MAISON</div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2.5 bg-secondary/30 hover:bg-secondary/50 rounded-full transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </motion.div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.8 }}
+                  className="p-8 pb-4 space-y-6"
                 >
-                  <Link
-                    to={item.to}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block font-display text-4xl hover:text-accent transition-colors"
-                  >
-                    {item.label}
-                  </Link>
+                  {authState.isAuthenticated ? (
+                    <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-border/50">
+                      <Link to={isAdmin ? "/admin" : "/profile"} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+                          <User className="h-6 w-6" strokeWidth={1.5} />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
+                          <div className="text-sm font-medium">{authState.user?.firstName || 'User'}</div>
+                        </div>
+                      </Link>
+                      {canUseWishlist && (
+                        <Link to="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="relative p-2 hover:bg-secondary/20 rounded-full transition-colors">
+                          <Heart className="h-5 w-5" strokeWidth={1.5} />
+                          {state.wishlist.length > 0 && (
+                            <span className="absolute top-1 right-1 h-3.5 w-3.5 rounded-full bg-accent text-[8px] font-bold text-accent-foreground flex items-center justify-center">
+                              {state.wishlist.length}
+                            </span>
+                          )}
+                        </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <Link 
+                      to="/login" 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center justify-between p-6 bg-secondary/30 rounded-2xl hover:bg-secondary/50 transition-colors border border-border/50"
+                    >
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Welcome</div>
+                        <div className="text-sm font-bold uppercase tracking-[0.1em]">Sign In / Join</div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 opacity-30" />
+                    </Link>
+                  )}
                 </motion.div>
-              ))}
-            </nav>
+
+                <nav className="p-8 space-y-8">
+                  {nav.map((item, i) => (
+                    <motion.div
+                      key={item.label}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 + i * 0.05, duration: 0.6 }}
+                    >
+                      <Link
+                        to={item.to}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block font-display text-4xl hover:text-accent transition-colors tracking-tight"
+                      >
+                        {item.label}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </nav>
+                
+                <div className="h-20" /> {/* Scroll spacer */}
+              </div>
+
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="p-8 border-t border-border flex items-center justify-between"
+              transition={{ delay: 0.6, duration: 0.8 }}
+              className="p-8 border-t border-border bg-secondary/5"
             >
-              <ThemeToggle />
-              <div className="flex gap-6">
-                <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest">Story</Link>
-                <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest">Contact</Link>
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Appearance</span>
+                <ThemeToggle />
+              </div>
+              <div className="flex gap-8">
+                <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Story</Link>
+                <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Contact</Link>
+                <Link to="/journal" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Journal</Link>
               </div>
             </motion.div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-    </motion.header>
+    </>
   );
 }

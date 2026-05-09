@@ -157,15 +157,15 @@ const Index = () => {
           {/* Small Top */}
           <motion.div 
             whileHover={{ scale: 0.98 }}
-            className="md:col-span-4 relative overflow-hidden group bento-item"
+            className="md:col-span-4 relative overflow-hidden group bento-item bg-black"
           >
             <img 
               src={products.find(p => p.category === 'backpacks')?.colors[0].image} 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 brightness-75" 
               alt="Backpacks"
             />
-            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6">
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors z-10" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6 z-20">
               <div className="eyebrow text-white/90 mb-2">The Atelier</div>
               <h3 className="font-display text-3xl mb-4">Backpacks</h3>
               <Link to="/shop?category=backpacks" className="text-[10px] font-bold uppercase tracking-widest link-underline after:bg-white">
@@ -177,15 +177,15 @@ const Index = () => {
           {/* Small Bottom Left */}
           <motion.div 
             whileHover={{ scale: 0.98 }}
-            className="md:col-span-4 relative overflow-hidden group bento-item"
+            className="md:col-span-4 relative overflow-hidden group bento-item bg-black"
           >
             <img 
               src={products.find(p => p.category === 'travel')?.colors[0].image} 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 brightness-75" 
               alt="Travel"
             />
-            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
-            <div className="absolute bottom-8 left-8 text-white">
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-10" />
+            <div className="absolute bottom-8 left-8 text-white z-20">
               <h3 className="font-display text-2xl mb-1">Travel</h3>
               <Link to="/shop?category=travel" className="text-[9px] font-bold uppercase tracking-tighter opacity-80 hover:opacity-100 transition-opacity">
                 Shop Travel →
@@ -231,18 +231,19 @@ const Index = () => {
       </section>
 
       {/* PHILOSOPHY - CINEMATIC SECTION */}
-      <section className="relative h-[80vh] flex items-center overflow-hidden">
+      <section className="relative h-[80vh] flex items-center overflow-hidden bg-black">
         <motion.div 
           style={{ y }}
           className="absolute inset-0 -z-10"
         >
+          <div className="absolute inset-0 bg-black/40 z-10" />
           <img 
             src="https://images.unsplash.com/photo-1547949003-9792a18a2601?auto=format&fit=crop&q=80" 
-            className="w-full h-[120%] object-cover brightness-50"
+            className="w-full h-[120%] object-cover brightness-[0.4]"
             alt="Philosophy"
           />
         </motion.div>
-        <div className="container-luxe text-white text-center">
+        <div className="container-luxe text-white text-center z-20">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}

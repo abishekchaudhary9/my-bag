@@ -78,12 +78,14 @@ export default function ProductCard({ product, index }: ProductCardProps) {
           </button>
         )}
 
-        <button
-          onClick={handleQuickAdd}
-          className="absolute bottom-4 left-4 right-4 h-12 glass text-foreground flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] font-bold transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 hover:bg-foreground hover:text-background"
-        >
-          <Plus className="h-4 w-4" /> Quick Add
-        </button>
+        {!isAdmin && (
+          <button
+            onClick={handleQuickAdd}
+            className="absolute bottom-4 left-4 right-4 h-12 glass text-foreground flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] font-bold transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 hover:bg-foreground hover:text-background"
+          >
+            <Plus className="h-4 w-4" /> Quick Add
+          </button>
+        )}
       </Link>
 
       <div className="mt-5 space-y-2">
