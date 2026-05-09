@@ -273,6 +273,11 @@ async function updatePassword(userId, { currentPassword, newPassword }) {
   return { message: "Password updated successfully." };
 }
 
+async function updateAvatar(userId, avatarUrl) {
+  await pool.query("UPDATE users SET avatar = ? WHERE id = ?", [avatarUrl, userId]);
+  return getCurrentUser(userId);
+}
+
 module.exports = {
   signup,
   login,
@@ -282,4 +287,5 @@ module.exports = {
   getCurrentUser,
   updateProfile,
   updatePassword,
+  updateAvatar,
 };

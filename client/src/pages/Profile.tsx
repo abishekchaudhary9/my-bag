@@ -12,7 +12,7 @@ import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } fr
 type Tab = "overview" | "settings" | "addresses" | "security";
 
 export default function Profile() {
-  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin } = useAuth();
+  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin, updateAvatar } = useAuth();
   const { state: storeState } = useStore();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
@@ -86,16 +86,34 @@ export default function Profile() {
     { key: "security", label: "Security", icon: Shield },
   ];
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const loadingToast = toast.loading("Uploading picture...");
+    try {
+      await updateAvatar(file);
+      toast.dismiss(loadingToast);
+    } catch (err) {
+      toast.dismiss(loadingToast);
+    }
+  };
+
   return (
     <Layout>
       <section className="container-luxe pt-12 pb-8">
         <div className="eyebrow mb-3">Your Account</div>
         <div className="flex flex-wrap items-center gap-6">
-          <div className="h-20 w-20 rounded-full bg-gradient-ink text-background grid place-items-center font-display text-2xl flex-shrink-0 relative group">
-            {initials}
-            <button className="absolute inset-0 rounded-full bg-foreground/60 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="h-20 w-20 rounded-full bg-gradient-ink text-background grid place-items-center font-display text-2xl flex-shrink-0 relative group overflow-hidden shadow-xl border border-border/50">
+            {user.avatar ? (
+              <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initials
+            )}
+            <label className="absolute inset-0 bg-foreground/60 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
               <Camera className="h-5 w-5" strokeWidth={1.5} />
-            </button>
+              <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+            </label>
           </div>
           <div>
             <h1 className="font-display text-3xl md:text-4xl">{user.firstName} {user.lastName}</h1>

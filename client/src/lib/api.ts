@@ -255,6 +255,11 @@ export const uploadsApi = {
     formData.append("image", file);
     return uploadRequest<{ image: { url: string; publicId: string } }>("/uploads/image", formData);
   },
+  avatar: (file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    return uploadRequest<{ user: any; image: { url: string; publicId: string } }>("/uploads/avatar", formData);
+  },
 };
 
 export const ordersApi = {

@@ -27,4 +27,11 @@ router.post(
   asyncHandler(uploadController.uploadImage)
 );
 
+router.post(
+  "/avatar",
+  authenticate,
+  upload.single("image"),
+  asyncHandler(uploadController.uploadAvatar)
+);
+
 module.exports = router;

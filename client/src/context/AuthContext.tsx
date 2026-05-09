@@ -152,6 +152,7 @@ type AuthCtx = {
   verifyOtp: (email: string, code: string) => AuthResult;
   fetchNotifications: () => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  updateAvatar: (file: File) => Promise<void>;
   socket: Socket | null;
   isAdmin: boolean;
 };
@@ -623,6 +624,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchOrders,
     fetchNotifications,
     markAllNotificationsRead,
+    updateAvatar: async (file: File) => {
+      try {
+        const { user } = await import("@/lib/api").then(m => m.uploadsApi.avatar(file));
+        dispatch({ type: "UPDATE_PROFILE", updates: user });
+        toast.success("Profile picture updated");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to update profile picture");
+        throw err;
+      }
+    },
     socket,
     resendVerificationEmail: async () => {
       const auth = getConfiguredFirebaseAuth();

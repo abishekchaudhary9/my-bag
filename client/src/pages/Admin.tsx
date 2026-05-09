@@ -23,6 +23,8 @@ import {
   Truck,
   Users,
   Bell,
+  Camera,
+  User,
 } from "lucide-react";
 import {
   Area,
@@ -53,9 +55,19 @@ import { toast } from "sonner";
 
 /* ─── Admin Layout ─────────────────────────────────────── */
 function AdminLayout({ children, notificationCount, onBellClick }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void }) {
-  const { state, logout } = useAuth();
+  const { state, logout, updateAvatar } = useAuth();
   const navigate = useNavigate();
   const handleLogout = () => { logout(); toast.success("Signed out"); navigate("/"); };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const lt = toast.loading("Updating avatar...");
+    try {
+      await updateAvatar(file);
+    } catch (err) {}
+    toast.dismiss(lt);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -84,9 +96,27 @@ function AdminLayout({ children, notificationCount, onBellClick }: { children: R
                   </span>
                 ) : null}
               </button>
-              <div className="hidden sm:block">
-                <div className="text-[11px] font-medium leading-none mb-1">{state.user?.firstName} {state.user?.lastName}</div>
-                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Administrator</div>
+              <div className="hidden sm:flex items-center gap-3">
+                <div className="relative group h-9 w-9 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden border border-border">
+                  {state.user?.avatar ? (
+                    <img src={state.user.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-4 w-4" strokeWidth={1.5} />
+                  )}
+                  <label className="absolute inset-0 bg-foreground/60 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera className="h-3 w-3" strokeWidth={1.5} />
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleAvatarUpload} 
+                    />
+                  </label>
+                </div>
+                <div>
+                  <div className="text-[11px] font-medium leading-none mb-1">{state.user?.firstName} {state.user?.lastName}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Administrator</div>
+                </div>
               </div>
             </div>
             <button onClick={handleLogout} className="flex items-center gap-1 text-xs text-destructive hover:underline font-medium">

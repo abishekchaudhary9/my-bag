@@ -146,9 +146,13 @@ export default function Header() {
                     setShowNotifications(false);
                   }
                 }}
-                className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
+                className="p-1 sm:p-1.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center overflow-hidden"
               >
-                <User className="h-5 w-5" strokeWidth={1.5} />
+                {authState.isAuthenticated && authState.user?.avatar ? (
+                  <img src={authState.user.avatar} alt="" className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" />
+                ) : (
+                  <User className="h-5 w-5" strokeWidth={1.5} />
+                )}
               </button>
 
 
@@ -342,8 +346,12 @@ export default function Header() {
                   {authState.isAuthenticated ? (
                     <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-border/50">
                       <Link to={isAdmin ? "/admin" : "/profile"} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center text-accent">
-                          <User className="h-6 w-6" strokeWidth={1.5} />
+                        <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden">
+                          {authState.user?.avatar ? (
+                            <img src={authState.user.avatar} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <User className="h-6 w-6" strokeWidth={1.5} />
+                          )}
                         </div>
                         <div>
                           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
