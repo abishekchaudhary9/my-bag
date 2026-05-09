@@ -226,50 +226,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Initialize Socket
     if (!socket) {
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
-      // Remove /api if present for the base socket connection
       const socketUrl = apiBase.replace(/\/api$/, "");
       
       socket = io(socketUrl, { 
         withCredentials: true,
         transports: ["websocket", "polling"]
       });
-      
-      socket.on("connect", () => {
-        console.log("[Socket] Connected to real-time server");
-        socket?.emit("join_user", user.id);
-        if (user.role === "admin") {
-          socket?.emit("join_admin");
-        }
-      });
-
-      socket.on("notification", (data) => {
-        toast.info(data.title, {
-          description: data.message,
-        });
-        fetchNotifications();
-      });
-
-      socket.on("order_update", (data) => {
-        toast.info(`Order Status Updated`, { 
-          description: `Order #${data.orderNumber} is now ${data.status}.` 
-        });
-        fetchOrders();
-        fetchNotifications(); // Refresh the badge and list
-      });
-
-      socket.on("new_order", (data) => {
-        toast.success(`New Order Received!`, { 
-          description: `A new order has been placed (#${data.orderId}).` 
-        });
-        if (user.role === "admin") {
-          // This will be caught by the Admin page's custom listener too
-          fetchOrders(); 
-        }
-      });
     }
 
     return { user, token };
-  }, [fetchOrders, fetchNotifications]);
+  }, []); // No dependencies needed for basic initialization
 
   const finishFirebaseLogin = useCallback(async (
     profile?: { firstName?: string; lastName?: string; phone?: string }
@@ -351,6 +317,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => undefined);
     }
   }, [state.isAuthenticated, state.user?.role]);
+  
+  // Real-time synchronization logic
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.user || !socket) return;
+
+    const onConnect = () => {
+      console.log("[Socket] Connected to real-time server");
+      socket?.emit("join_user", state.user!.id);
+      if (state.user!.role === "admin") {
+        socket?.emit("join_admin");
+      }
+    };
+
+    if (socket.connected) {
+      onConnect();
+    }
+
+    socket.on("connect", onConnect);
+
+    socket.on("notification", (data) => {
+      toast.info(data.title, {
+        description: data.message,
+      });
+      fetchNotifications();
+    });
+
+    socket.on("order_update", (data) => {
+      toast.info(`Order Status Updated`, { 
+        description: `Order #${data.orderNumber} is now ${data.status}.` 
+      });
+      fetchOrders();
+      fetchNotifications();
+    });
+
+    socket.on("new_order", (data) => {
+      toast.success(`New Order Received!`, { 
+        description: `A new order has been placed (#${data.orderId}).` 
+      });
+      if (state.user?.role === "admin") {
+        fetchOrders(); 
+      }
+    });
+
+    return () => {
+      socket?.off("connect", onConnect);
+      socket?.off("notification");
+      socket?.off("order_update");
+      socket?.off("new_order");
+    };
+  }, [state.isAuthenticated, state.user, fetchOrders, fetchNotifications]);
 
 
   const value: AuthCtx = {

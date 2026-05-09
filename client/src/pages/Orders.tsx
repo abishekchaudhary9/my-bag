@@ -148,33 +148,35 @@ export default function Orders() {
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-5 gap-6 border-t border-border">
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-muted-foreground">Total</span>
-                      <span className="font-display text-lg">Rs {order.total.toFixed(2)}</span>
+                      <span className="text-muted-foreground eyebrow !mb-0 lowercase">Total</span>
+                      <span className="font-display text-xl tracking-tight">Rs {order.total.toFixed(2)}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                       {order.trackingNumber && (
-                        <span className="text-xs text-muted-foreground hidden sm:inline">
-                          Tracking: {order.trackingNumber}
-                        </span>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground border-l border-border pl-4">
+                          Ref: {order.trackingNumber}
+                        </div>
                       )}
-                      <Link
-                        to={`/order-confirmation/${order.id}`}
-                        className="flex items-center gap-2 text-xs text-muted-foreground link-underline"
-                      >
-                        <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        View
-                      </Link>
-                      {order.status === "delivered" && order.items.length > 0 && (
+                      <div className="flex items-center gap-4 ml-auto sm:ml-0">
                         <Link
-                          to={`/product/${order.items[0].name.toLowerCase().replace(/\s+/g, '-')}`}
-                          className="flex items-center gap-2 text-xs text-accent link-underline font-semibold"
+                          to={`/order-confirmation/${order.id}`}
+                          className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                          Write Review
+                          <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          Details
                         </Link>
-                      )}
+                        {order.status === "delivered" && order.items.length > 0 && (
+                          <Link
+                            to={`/product/${order.items[0].name.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-accent font-bold"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            Review
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -189,46 +191,48 @@ export default function Orders() {
 
 function OrderTracker({ currentStatus }: { currentStatus: string }) {
   const steps = [
-    { id: "processing", label: "Processing", desc: "We are preparing your order." },
-    { id: "shipped", label: "Shipped", desc: "Your order is on the way." },
-    { id: "delivered", label: "Delivered", desc: "Your order has arrived." }
+    { id: "processing", label: "Processing", desc: "Preparing" },
+    { id: "shipped", label: "Shipped", desc: "In Transit" },
+    { id: "delivered", label: "Delivered", desc: "Arrived" }
   ];
 
   const currentIndex = steps.findIndex(s => s.id === currentStatus);
 
   return (
-    <div className="relative py-2">
-      <div className="absolute top-[22px] left-8 right-8 h-[2px] bg-secondary -z-10" />
-      <div 
-        className="absolute top-[22px] left-8 h-[2px] bg-foreground -z-10 transition-all duration-1000 ease-in-out"
-        style={{ width: currentIndex <= 0 ? '0%' : currentIndex === 1 ? '50%' : '100%' }}
-      />
-      
-      <div className="flex justify-between">
-        {steps.map((step, idx) => {
-          const isCompleted = currentIndex >= idx;
-          const isCurrent = currentIndex === idx;
-          
-          return (
-            <div key={step.id} className="flex flex-col items-center w-1/3 relative">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center bg-background border-2 transition-all duration-700 ${isCompleted ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'} ${isCurrent ? 'ring-4 ring-foreground/10' : ''}`}>
-                {isCompleted ? (
-                  <CheckCircle2 className={`h-5 w-5 ${isCurrent ? 'animate-pulse' : ''}`} />
-                ) : (
-                  <Circle className="h-5 w-5 opacity-20" />
+    <div className="relative py-4 px-2 overflow-x-auto no-scrollbar">
+      <div className="min-w-[300px]">
+        <div className="absolute top-[34px] left-10 right-10 h-[1px] bg-border -z-10" />
+        <div 
+          className="absolute top-[34px] left-10 h-[1px] bg-foreground -z-10 transition-all duration-1000 ease-in-out"
+          style={{ width: currentIndex <= 0 ? '0%' : currentIndex === 1 ? '45%' : '80%' }}
+        />
+        
+        <div className="flex justify-between">
+          {steps.map((step, idx) => {
+            const isCompleted = currentIndex >= idx;
+            const isCurrent = currentIndex === idx;
+            
+            return (
+              <div key={step.id} className="flex flex-col items-center w-1/3 relative">
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center bg-background border transition-all duration-700 ${isCompleted ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'} ${isCurrent ? 'ring-8 ring-foreground/5 scale-110' : ''}`}>
+                  {isCompleted ? (
+                    <CheckCircle2 className={`h-5 w-5 ${isCurrent ? 'animate-pulse text-accent' : ''}`} />
+                  ) : (
+                    <Circle className="h-4 w-4 opacity-20" />
+                  )}
+                </div>
+                <div className={`mt-4 text-[9px] uppercase tracking-[0.2em] font-black transition-colors duration-500 text-center ${isCompleted ? 'text-foreground' : 'text-muted-foreground/60'}`}>
+                  {step.label}
+                </div>
+                {isCurrent && (
+                  <div className="text-[8px] uppercase tracking-widest text-accent mt-1.5 font-bold animate-fade-in">
+                    {step.desc}
+                  </div>
                 )}
               </div>
-              <div className={`mt-3 text-[10px] uppercase tracking-[0.2em] font-bold transition-colors duration-500 ${isCompleted ? 'text-foreground' : 'text-muted-foreground/60'}`}>
-                {step.label}
-              </div>
-              {isCurrent && (
-                <div className="text-[10px] text-muted-foreground mt-2 text-center max-w-[120px] hidden sm:block animate-fade-in italic">
-                  {step.desc}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

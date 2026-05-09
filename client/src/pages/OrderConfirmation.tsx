@@ -111,6 +111,19 @@ export default function OrderConfirmation() {
                   <span className="text-sm capitalize">{order.status}</span>
                 </div>
               </div>
+              {order.trackingNumber && (
+                <div className="col-span-full mt-2 pt-4 border-t border-border/50">
+                  <div className="text-xs text-muted-foreground mb-1 uppercase tracking-widest">Tracking Number</div>
+                  <div className="flex items-center gap-2 group cursor-pointer" onClick={() => {
+                    navigator.clipboard.writeText(order.trackingNumber);
+                    toast.success("Tracking number copied");
+                  }}>
+                    <span className="text-lg font-display tracking-tight text-accent">{order.trackingNumber}</span>
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Use this code to track your atelier shipment.</p>
+                </div>
+              )}
             </div>
 
             <div className="hairline" />

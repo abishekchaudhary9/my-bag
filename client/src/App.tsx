@@ -10,6 +10,7 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Shop from "./pages/Shop.tsx";
 import ProductPage from "./pages/Product.tsx";
+import TrackOrder from "./pages/TrackOrder.tsx";
 import Cart from "./pages/Cart.tsx";
 import Wishlist from "./pages/Wishlist.tsx";
 import Journal from "./pages/Journal.tsx";
@@ -48,6 +49,7 @@ const App = () => (
                 <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/shop" element={<Shop />} />
+                <Route path="/track" element={<TrackOrder />} />
                 <Route path="/product/:slug" element={<ProductPage />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/wishlist" element={<Wishlist />} />

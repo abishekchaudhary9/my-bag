@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post("/", authenticate, asyncHandler(orderController.createOrder));
 router.post("/khalti-initiate", authenticate, asyncHandler(orderController.initiateKhalti));
+router.get("/track/:trackingNumber", asyncHandler(orderController.trackOrder));
 router.get("/", authenticate, asyncHandler(orderController.listOrders));
 router.get("/:orderNumber", authenticate, asyncHandler(orderController.getOrder));
 

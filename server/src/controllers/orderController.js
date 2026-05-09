@@ -48,9 +48,15 @@ async function initiateKhalti(req, res) {
   }
 }
 
+async function trackOrder(req, res) {
+  const order = await orderService.trackOrder(req.params.trackingNumber);
+  res.json({ order });
+}
+
 module.exports = {
   createOrder,
   listOrders,
   getOrder,
   initiateKhalti,
+  trackOrder,
 };

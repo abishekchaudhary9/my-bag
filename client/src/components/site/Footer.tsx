@@ -33,6 +33,7 @@ export default function Footer() {
               ["Sustainability", "/about"],
             ]} />
             <FooterCol title="Support" links={[
+              ["Track Your Order", "/track"],
               ["Shipping & Returns", "/shipping-returns"],
               ["Size Guide", "/size-guide"],
               ["Contact Us", "/contact"],

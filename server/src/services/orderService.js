@@ -32,6 +32,7 @@ async function createOrder(user, data) {
   const shippingPhone = formatNepalPhone(shippingInfo.phone);
 
   const orderNumber = `ORD-${Date.now().toString().slice(-8)}`;
+  const trackingNumber = `MSN-TRK-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   // Validate stock for all items
   for (const item of items) {
@@ -43,12 +44,13 @@ async function createOrder(user, data) {
   }
 
   const [result] = await pool.query(
-    `INSERT INTO orders (order_number, user_id, status, subtotal, shipping, discount, total, payment_method,
+    `INSERT INTO orders (order_number, tracking_number, user_id, status, subtotal, shipping, discount, total, payment_method,
       shipping_first_name, shipping_last_name, shipping_email, shipping_phone,
       shipping_street, shipping_city, shipping_state, shipping_zip, shipping_country)
-     VALUES (?, ?, 'processing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, 'processing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       orderNumber,
+      trackingNumber,
       user.id,
       subtotal,
       shipping || 0,
@@ -140,6 +142,7 @@ async function createOrder(user, data) {
     shipping: shipping || 0,
     discount: discount || 0,
     total,
+    trackingNumber,
   };
 }
 
@@ -171,8 +174,22 @@ async function getUserOrder(orderNumber, userId) {
   return mapOrder(orders[0], items);
 }
 
+async function trackOrder(trackingNumber) {
+  const [orders] = await pool.query(
+    "SELECT order_number, status, created_at FROM orders WHERE tracking_number = ?",
+    [trackingNumber]
+  );
+
+  if (orders.length === 0) {
+    throw createHttpError(404, "Invalid tracking number");
+  }
+
+  return orders[0];
+}
+
 module.exports = {
   createOrder,
   listUserOrders,
   getUserOrder,
+  trackOrder,
 };
