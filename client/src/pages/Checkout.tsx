@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CreditCard, Lock, Truck, ChevronLeft, ChevronRight, ShieldCheck, Check, MapPin } from "lucide-react";
+import { CreditCard, Lock, Truck, ChevronLeft, ChevronRight, ShieldCheck, Check, MapPin, Banknote } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
@@ -240,15 +240,20 @@ export default function Checkout() {
                  <div className="space-y-12">
                    <div className="eyebrow pb-6 border-b border-border/50">Payment Method</div>
                    <div className="grid md:grid-cols-3 gap-4">
-                     {["khalti", "esewa", "cod"].map((m) => (
-                       <button
-                         key={m}
-                         onClick={() => setPayment({ method: m as any })}
-                         className={`h-24 border text-[10px] font-bold uppercase tracking-widest transition-all ${payment.method === m ? 'border-accent bg-accent/5' : 'border-border hover:border-foreground/50'}`}
-                       >
-                         {m === "khalti" ? "Khalti" : m === "esewa" ? "eSewa" : "Cash on Delivery"}
-                       </button>
-                     ))}
+                      {["khalti", "esewa", "cod"].map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setPayment({ method: m as any })}
+                          className={`h-24 border flex flex-col items-center justify-center gap-3 transition-all duration-300 ${payment.method === m ? 'border-accent bg-accent/5' : 'border-border hover:border-foreground/50'}`}
+                        >
+                          {m === "khalti" && <span className="text-[#5C2D91] font-black text-[22px] tracking-tighter lowercase">khalti</span>}
+                          {m === "esewa" && <img src="https://esewa.com.np/common/images/esewa_logo.png" alt="eSewa" className="h-5 object-contain" />}
+                          {m === "cod" && <img src="https://img.icons8.com/fluency/96/cash.png" alt="Cash on Delivery" className="h-8 object-contain" />}
+                          <span className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${payment.method === m ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {m === "khalti" ? "Khalti" : m === "esewa" ? "eSewa" : "Cash on Delivery"}
+                          </span>
+                        </button>
+                      ))}
                    </div>
                    <div className="pt-10 flex justify-between">
                      <button onClick={() => handleStepChange("shipping")} className="h-16 px-10 text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Back</button>
