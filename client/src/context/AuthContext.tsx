@@ -15,7 +15,7 @@ import {
   updateProfile as updateFirebaseProfile,
   sendEmailVerification,
 } from "firebase/auth";
-import { authApi, ordersApi, notificationsApi, setToken } from "@/lib/api";
+import { authApi, ordersApi, notificationsApi, setToken, uploadsApi } from "@/lib/api";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 import {
@@ -627,7 +627,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     markAllNotificationsRead,
     updateAvatar: async (file: File) => {
       try {
-        const { user } = await import("@/lib/api").then(m => m.uploadsApi.avatar(file));
+        const { user } = await uploadsApi.avatar(file);
         dispatch({ type: "UPDATE_PROFILE", updates: user });
         toast.success("Profile picture updated");
       } catch (err: any) {
@@ -637,7 +637,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     deleteAvatar: async () => {
       try {
-        const { user } = await import("@/lib/api").then(m => m.uploadsApi.deleteAvatar());
+        const { user } = await uploadsApi.deleteAvatar();
         dispatch({ type: "UPDATE_PROFILE", updates: user });
         toast.success("Profile picture removed");
       } catch (err: any) {

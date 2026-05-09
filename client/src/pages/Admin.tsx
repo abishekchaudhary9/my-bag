@@ -52,31 +52,17 @@ import PromptModal from "@/components/admin/PromptModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
+import { ProfileSettingsForm } from "@/components/profile/ProfileSettingsForm";
+import { SecurityTabForm } from "@/components/profile/SecurityTabForm";
+import { AddressesTabForm } from "@/components/profile/AddressesTabForm";
+
+
 
 /* ─── Admin Layout ─────────────────────────────────────── */
-function AdminLayout({ children, notificationCount, onBellClick }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void }) {
-  const { state, logout, updateAvatar, deleteAvatar } = useAuth();
+function AdminLayout({ children, notificationCount, onBellClick, onProfileClick }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void, onProfileClick?: () => void }) {
+  const { state, logout } = useAuth();
   const navigate = useNavigate();
   const handleLogout = () => { logout(); toast.success("Signed out"); navigate("/"); };
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const lt = toast.loading("Updating avatar...");
-    try {
-      await updateAvatar(file);
-    } catch (err) {}
-    toast.dismiss(lt);
-  };
-
-  const handleAvatarDelete = async () => {
-    if (!confirm("Remove profile picture?")) return;
-    const lt = toast.loading("Removing avatar...");
-    try {
-      await deleteAvatar();
-    } catch (err) {}
-    toast.dismiss(lt);
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -106,35 +92,19 @@ function AdminLayout({ children, notificationCount, onBellClick }: { children: R
                 ) : null}
               </button>
               <div className="hidden sm:flex items-center gap-3">
-                <div className="relative group h-9 w-9 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden border border-border">
-                  {state.user?.avatar ? (
-                    <>
+                <button onClick={onProfileClick} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                  <div className="relative group h-9 w-9 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden border border-border">
+                    {state.user?.avatar ? (
                       <img src={state.user.avatar} alt="" className="h-full w-full object-cover" />
-                      <button 
-                        onClick={(e) => { e.preventDefault(); handleAvatarDelete(); }}
-                        className="absolute top-0 right-0 h-4 w-4 bg-destructive text-white rounded-full grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
-                        title="Remove picture"
-                      >
-                        <Trash2 className="h-2 w-2" />
-                      </button>
-                    </>
-                  ) : (
-                    <User className="h-4 w-4" strokeWidth={1.5} />
-                  )}
-                  <label className="absolute inset-0 bg-foreground/40 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <Camera className="h-3 w-3" strokeWidth={1.5} />
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*" 
-                      onChange={handleAvatarUpload} 
-                    />
-                  </label>
-                </div>
-                <div>
-                  <div className="text-[11px] font-medium leading-none mb-1">{state.user?.firstName} {state.user?.lastName}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Administrator</div>
-                </div>
+                    ) : (
+                      <User className="h-4 w-4" strokeWidth={1.5} />
+                    )}
+                  </div>
+                  <div className="hidden xs:block text-left">
+                    <div className="text-[11px] font-medium leading-none mb-1">{state.user?.firstName} {state.user?.lastName}</div>
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">My Profile</div>
+                  </div>
+                </button>
               </div>
             </div>
             <button onClick={handleLogout} className="flex items-center gap-1 text-xs text-destructive hover:underline font-medium">
@@ -291,7 +261,7 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
-type Tab = "dashboard" | "products" | "orders" | "customers" | "feedback" | "notifications" | "coupons";
+type Tab = "dashboard" | "products" | "orders" | "customers" | "feedback" | "notifications" | "coupons" | "profile";
 
 const TABS_CONFIG: { key: Tab; label: string; icon: any }[] = [
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -301,11 +271,12 @@ const TABS_CONFIG: { key: Tab; label: string; icon: any }[] = [
   { key: "feedback", label: "Feedback", icon: TrendingUp },
   { key: "notifications", label: "Notifications", icon: AlertTriangle },
   { key: "coupons", label: "Coupons", icon: DollarSign },
+  { key: "profile", label: "My Profile", icon: User },
 ];
 
 /* ─── Main Admin Page ──────────────────────────────────── */
 export default function Admin() {
-  const { state, isAdmin } = useAuth();
+  const { state, isAdmin, updateAvatar, deleteAvatar, updateProfile, changePassword } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab") as Tab;
   const [tab, setTab] = useState<Tab>(tabParam || "dashboard");
@@ -766,6 +737,7 @@ export default function Admin() {
     <AdminLayout 
       notificationCount={unreadCount} 
       onBellClick={() => handleTabChange("notifications")}
+      onProfileClick={() => handleTabChange("profile")}
     >
       <section className="container-luxe pt-12 pb-6">
         <div className="flex items-center justify-between">
@@ -1572,6 +1544,95 @@ export default function Admin() {
           onClose={() => setReplyQuestionTarget(null)}
         />
       )}
+      {/* ─── MY PROFILE ─── */}
+      {tab === "profile" && state.user && (
+        <div className="space-y-10 animate-fade-up">
+          <Panel title="My Profile" eyebrow="Manage your administrator account" index={0}>
+            <div className="flex flex-wrap items-center gap-8 mb-10">
+              <div className="relative group">
+                <div className="h-24 w-24 rounded-full bg-gradient-ink text-background grid place-items-center font-display text-3xl flex-shrink-0 overflow-hidden shadow-xl border border-border/50">
+                  {state.user.avatar ? (
+                    <img src={state.user.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    getInitials(`${state.user.firstName} ${state.user.lastName}`)
+                  )}
+                  <label className="absolute inset-0 bg-black/40 text-white grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera className="h-6 w-6" strokeWidth={1.5} />
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const lt = toast.loading("Updating avatar...");
+                        try {
+                          await updateAvatar(file);
+                        } catch (err) {}
+                        toast.dismiss(lt);
+                      }} 
+                    />
+                  </label>
+                </div>
+                
+                {state.user.avatar && (
+                  <button 
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (confirm("Remove profile picture?")) {
+                        const lt = toast.loading("Removing avatar...");
+                        await deleteAvatar();
+                        toast.dismiss(lt);
+                      }
+                    }}
+                    className="absolute -top-1 -right-1 h-7 w-7 bg-destructive text-white rounded-full grid place-items-center shadow-lg hover:scale-110 transition-transform z-10"
+                    title="Remove picture"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                
+                <label className="absolute -bottom-1 -right-1 h-8 w-8 bg-accent text-accent-foreground rounded-full grid place-items-center shadow-lg cursor-pointer hover:scale-110 transition-transform lg:hidden">
+                  <Camera className="h-4 w-4" strokeWidth={2} />
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const lt = toast.loading("Updating avatar...");
+                      try {
+                        await updateAvatar(file);
+                      } catch (err) {}
+                      toast.dismiss(lt);
+                    }} 
+                  />
+                </label>
+              </div>
+              <div>
+                <h3 className="font-display text-3xl">{state.user.firstName} {state.user.lastName}</h3>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-sm text-muted-foreground">{state.user.email || state.user.phone}</span>
+                  <span className="text-[10px] uppercase tracking-[0.18em] px-2 py-0.5 bg-accent text-accent-foreground">Administrator</span>
+                </div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Member since {new Date(state.user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-12 border-t border-border pt-10">
+              <div className="space-y-10">
+                <ProfileSettingsForm user={state.user} onUpdate={updateProfile} />
+                <AddressesTabForm user={state.user} onUpdate={updateProfile} />
+              </div>
+              <div className="space-y-10">
+                <SecurityTabForm onChangePassword={changePassword} />
+              </div>
+            </div>
+          </Panel>
+        </div>
+      )}
+
       {showAddCoupon && (
         <CouponModal
           onClose={() => setShowAddCoupon(false)}

@@ -9,6 +9,10 @@ import { Product, products } from "@/data/products";
 import { toast } from "sonner";
 import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
 
+import { ProfileSettingsForm } from "@/components/profile/ProfileSettingsForm";
+import { AddressesTabForm } from "@/components/profile/AddressesTabForm";
+import { SecurityTabForm } from "@/components/profile/SecurityTabForm";
+
 type Tab = "overview" | "settings" | "addresses" | "security";
 
 export default function Profile() {
@@ -30,26 +34,6 @@ export default function Profile() {
       .map((id) => catalog.find((product) => String(product.id) === String(id)))
       .filter((product): product is Product => Boolean(product));
   }, [apiProducts, storeState.wishlist, storeState.wishlistItems]);
-
-  if (isAdmin) {
-    return (
-      <Layout>
-        <div className="container-luxe py-32 text-center animate-fade-up">
-          <div className="eyebrow mb-4">Restricted</div>
-          <h1 className="font-display text-5xl md:text-6xl">Admin Panel</h1>
-          <p className="mt-5 text-muted-foreground max-w-md mx-auto">
-            Admin accounts are managed from the Admin Panel.
-          </p>
-          <Link
-            to="/admin"
-            className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
-          >
-            Go to Admin Panel
-          </Link>
-        </div>
-      </Layout>
-    );
-  }
 
   if (!state.isAuthenticated || !state.user) {
     return (
@@ -104,28 +88,36 @@ export default function Profile() {
       <section className="container-luxe pt-12 pb-8">
         <div className="eyebrow mb-3">Your Account</div>
         <div className="flex flex-wrap items-center gap-6">
-          <div className="h-20 w-20 rounded-full bg-gradient-ink text-background grid place-items-center font-display text-2xl flex-shrink-0 relative group overflow-hidden shadow-xl border border-border/50">
-            {user.avatar ? (
-              <>
+          <div className="relative group">
+            <div className="h-20 w-20 rounded-full bg-gradient-ink text-background grid place-items-center font-display text-2xl flex-shrink-0 overflow-hidden shadow-xl border border-border/50">
+              {user.avatar ? (
                 <img src={user.avatar} alt="" className="h-full w-full object-cover" />
-                <button 
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    if (confirm("Remove profile picture?")) {
-                      await deleteAvatar();
-                    }
-                  }}
-                  className="absolute top-1 right-1 h-6 w-6 bg-destructive text-white rounded-full grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
-                  title="Remove picture"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </>
-            ) : (
-              initials
+              ) : (
+                initials
+              )}
+              <label className="absolute inset-0 bg-black/40 text-white grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                <Camera className="h-5 w-5" strokeWidth={1.5} />
+                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+              </label>
+            </div>
+            
+            {user.avatar && (
+              <button 
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (confirm("Remove profile picture?")) {
+                    await deleteAvatar();
+                  }
+                }}
+                className="absolute -top-1 -right-1 h-6 w-6 bg-destructive text-white rounded-full grid place-items-center shadow-lg hover:scale-110 transition-transform z-10"
+                title="Remove picture"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
             )}
-            <label className="absolute inset-0 bg-foreground/40 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <Camera className="h-5 w-5" strokeWidth={1.5} />
+            
+            <label className="absolute -bottom-1 -right-1 h-7 w-7 bg-accent text-accent-foreground rounded-full grid place-items-center shadow-lg cursor-pointer hover:scale-110 transition-transform md:hidden">
+              <Camera className="h-3.5 w-3.5" strokeWidth={2} />
               <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
             </label>
           </div>
@@ -268,13 +260,13 @@ export default function Profile() {
         )}
 
         {/* SETTINGS TAB */}
-        {tab === "settings" && <ProfileSettings user={user} onUpdate={updateProfile} />}
+        {tab === "settings" && <ProfileSettingsForm user={user} onUpdate={updateProfile} />}
 
         {/* ADDRESSES TAB */}
-        {tab === "addresses" && <AddressesTab user={user} onUpdate={updateProfile} />}
+        {tab === "addresses" && <AddressesTabForm user={user} onUpdate={updateProfile} />}
 
         {/* SECURITY TAB */}
-        {tab === "security" && <SecurityTab onChangePassword={changePassword} />}
+        {tab === "security" && <SecurityTabForm onChangePassword={changePassword} />}
 
         {/* Logout */}
         <div className="mt-12 pt-8 border-t border-border">
@@ -300,207 +292,4 @@ function QuickStat({ icon: Icon, label, value, to, accent }: { icon: typeof User
     </div>
   );
   return to ? <Link to={to}>{inner}</Link> : inner;
-}
-
-function ProfileSettings({ user, onUpdate }: { user: AuthUser; onUpdate: (u: Partial<AuthUser>) => Promise<void> }) {
-  const [form, setForm] = useState({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email || "",
-    phone: user.phone || "",
-  });
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      toast.error("First and last name are required");
-      return;
-    }
-    if (form.email && !isValidEmail(form.email)) {
-      toast.error("Enter a valid email address");
-      return;
-    }
-    if (form.phone && !isValidNepalPhone(form.phone)) {
-      toast.error("Enter a valid Nepal mobile number", {
-        description: "Use 98XXXXXXXX, 97XXXXXXXX, or +97798XXXXXXXX.",
-      });
-      return;
-    }
-
-    await onUpdate({ ...form, phone: form.phone ? formatNepalPhone(form.phone) : "" });
-    toast.success("Profile updated");
-  };
-
-  return (
-    <form onSubmit={handleSave} className="max-w-lg space-y-5 animate-fade-up">
-      <div className="eyebrow mb-6">Personal Information</div>
-      <div className="grid grid-cols-2 gap-4">
-        <label className="block">
-          <span className="eyebrow">First Name</span>
-          <input type="text" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-        <label className="block">
-          <span className="eyebrow">Last Name</span>
-          <input type="text" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-      </div>
-      <label className="block">
-        <span className="eyebrow">Email</span>
-        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-      </label>
-      <label className="block">
-        <span className="eyebrow">Phone</span>
-        <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+977 98XXXXXXXX" className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-      </label>
-      <button type="submit" className="bg-foreground text-background px-7 py-3.5 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500">
-        Save Changes
-      </button>
-    </form>
-  );
-}
-
-function AddressesTab({ user, onUpdate }: { user: AuthUser; onUpdate: (u: Partial<AuthUser>) => Promise<void> }) {
-  const [form, setForm] = useState({
-    street: user.address?.street ?? "",
-    city: user.address?.city ?? "",
-    state: user.address?.state ?? "",
-    zip: user.address?.zip ?? "",
-    country: user.address?.country ?? DEFAULT_COUNTRY,
-  });
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onUpdate({ address: { ...form, country: form.country || DEFAULT_COUNTRY } });
-    toast.success("Address updated");
-  };
-
-  return (
-    <form onSubmit={handleSave} className="max-w-lg space-y-5 animate-fade-up">
-      <div className="eyebrow mb-6">Shipping Address</div>
-      <label className="block">
-        <span className="eyebrow">Street</span>
-        <input type="text" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-      </label>
-      <div className="grid grid-cols-3 gap-4">
-        <label className="block">
-          <span className="eyebrow">City</span>
-          <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-        <label className="block">
-          <span className="eyebrow">State</span>
-          <input type="text" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-        <label className="block">
-          <span className="eyebrow">ZIP</span>
-          <input type="text" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-      </div>
-      <label className="block">
-        <span className="eyebrow">Country</span>
-        <input type="text" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-      </label>
-      <button type="submit" className="bg-foreground text-background px-7 py-3.5 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500">
-        Save Address
-      </button>
-    </form>
-  );
-}
-
-function SecurityTab({ onChangePassword }: { onChangePassword: (currentPassword: string, newPassword: string) => Promise<void> }) {
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [twoFA, setTwoFA] = useState(false);
-  const [emailNotif, setEmailNotif] = useState(true);
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPw !== confirmPw) {
-      toast.error("Passwords do not match");
-      return;
-    }
-    if (newPw.length < 8 || !/[A-Z]/.test(newPw) || !/\d/.test(newPw)) {
-      toast.error("Password must be at least 8 characters and include one uppercase letter and one number");
-      return;
-    }
-    try {
-      await onChangePassword(currentPw, newPw);
-      toast.success("Password updated");
-      setCurrentPw("");
-      setNewPw("");
-      setConfirmPw("");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update password");
-    }
-  };
-
-  return (
-    <div className="max-w-lg space-y-10 animate-fade-up">
-      {/* Password change */}
-      <form onSubmit={handlePasswordChange} className="space-y-5">
-        <div className="eyebrow mb-6">Change Password</div>
-        <label className="block">
-          <span className="eyebrow">Current Password</span>
-          <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-        <label className="block">
-          <span className="eyebrow">New Password</span>
-          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-        <label className="block">
-          <span className="eyebrow">Confirm New Password</span>
-          <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-2 w-full bg-transparent border-b border-border focus:border-foreground py-2.5 text-base focus:outline-none transition-colors" />
-        </label>
-        <button type="submit" className="bg-foreground text-background px-7 py-3.5 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500">
-          Update Password
-        </button>
-      </form>
-
-      {/* Security options */}
-      <div className="space-y-5">
-        <div className="eyebrow mb-4">Security Settings</div>
-        <div className="flex items-center justify-between p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <Shield className="h-5 w-5 text-accent" strokeWidth={1.5} />
-            <div>
-              <div className="text-sm font-medium">Two-Factor Authentication</div>
-              <div className="text-xs text-muted-foreground">Add an extra layer of security</div>
-            </div>
-          </div>
-          <button
-            onClick={() => { setTwoFA(!twoFA); toast.success(twoFA ? "2FA disabled" : "2FA enabled"); }}
-            className={`relative w-11 h-6 rounded-full transition-colors ${twoFA ? "bg-accent" : "bg-border"}`}
-          >
-            <div className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-background transition-transform ${twoFA ? "translate-x-5" : ""}`} />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <Bell className="h-5 w-5 text-accent" strokeWidth={1.5} />
-            <div>
-              <div className="text-sm font-medium">Email Notifications</div>
-              <div className="text-xs text-muted-foreground">Order updates and new arrivals</div>
-            </div>
-          </div>
-          <button
-            onClick={() => { setEmailNotif(!emailNotif); toast.success(emailNotif ? "Notifications disabled" : "Notifications enabled"); }}
-            className={`relative w-11 h-6 rounded-full transition-colors ${emailNotif ? "bg-accent" : "bg-border"}`}
-          >
-            <div className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-background transition-transform ${emailNotif ? "translate-x-5" : ""}`} />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <Eye className="h-5 w-5 text-accent" strokeWidth={1.5} />
-            <div>
-              <div className="text-sm font-medium">Login Activity</div>
-              <div className="text-xs text-muted-foreground">Last login: Today from Chrome on Windows</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
