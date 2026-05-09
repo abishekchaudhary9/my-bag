@@ -59,17 +59,17 @@ export default function Header() {
               <Menu className="h-5 w-5" />
             </button>
             <button
-            aria-label="Search"
-            onClick={() => setIsSearchOpen(true)}
-            className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
-          >
-            <Search className="h-5 w-5" strokeWidth={1.5} />
-          </button>
+              aria-label="Search"
+              onClick={() => setIsSearchOpen(true)}
+              className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
+            >
+              <Search className="h-5 w-5" strokeWidth={1.5} />
+            </button>
           </div>
 
           {/* CENTER: Logo - Absolutely centered for symmetry */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
-            <motion.div 
+            <motion.div
               className="font-display text-xl sm:text-3xl tracking-tight cursor-pointer py-1"
               whileTap={{ scale: 0.98 }}
               onClick={() => {
@@ -77,17 +77,17 @@ export default function Header() {
                 navigate("/");
               }}
             >
-              <motion.span 
+              <motion.span
                 animate={{ color: "hsl(var(--foreground))" }}
-                whileTap={{ 
+                whileTap={{
                   color: [
-                    "hsl(var(--foreground))", 
-                    "hsl(var(--accent))", 
+                    "hsl(var(--foreground))",
+                    "hsl(var(--accent))",
                     "hsl(var(--foreground))"
                   ],
                 }}
-                transition={{ 
-                  duration: 1.2, 
+                transition={{
+                  duration: 1.2,
                   ease: "easeInOut",
                   times: [0, 0.5, 1]
                 }}
@@ -116,77 +116,24 @@ export default function Header() {
 
             {/* Notifications */}
             {authState.isAuthenticated && (
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    const next = !showNotifications;
-                    setShowNotifications(next);
-                    setShowUserMenu(false);
-                    if (next && authState.unreadCount > 0) {
-                      markAllNotificationsRead();
-                    }
-                  }}
-                  className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center relative group"
-                >
-                  <Bell className="h-5 w-5" strokeWidth={1.5} />
-                  {authState.unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
-                      {authState.unreadCount > 9 ? '9+' : authState.unreadCount}
-                    </span>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {showNotifications && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-3 w-80 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl origin-top-right z-50 overflow-hidden"
-                    >
-                      <div className="p-4 border-b border-border/50 flex items-center justify-between">
-                        <div className="text-[10px] font-bold uppercase tracking-widest">Notifications</div>
-                        {authState.unreadCount > 0 && (
-                          <button 
-                            onClick={() => { /* Handle mark all read */ }} 
-                            className="text-[9px] uppercase tracking-widest text-accent hover:underline"
-                          >
-                            Mark all read
-                          </button>
-                        )}
-                      </div>
-                      <div className="max-h-[400px] overflow-y-auto no-scrollbar">
-                        {authState.notifications.length === 0 ? (
-                          <div className="py-12 text-center text-xs text-muted-foreground italic">No new notifications</div>
-                        ) : (
-                          authState.notifications.slice(0, 5).map((n) => (
-                            <div 
-                              key={n.id} 
-                              className={`p-4 border-b border-border/30 last:border-0 hover:bg-white/5 transition-colors cursor-pointer ${!n.is_read ? 'bg-accent/5' : ''}`}
-                              onClick={() => {
-                                if (n.link) navigate(n.link);
-                                setShowNotifications(false);
-                              }}
-                            >
-                              <div className="font-medium text-xs mb-1">{n.title}</div>
-                              <div className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</div>
-                              <div className="text-[9px] text-muted-foreground/50 mt-2 uppercase tracking-tight">
-                                {new Date(n.created_at).toLocaleDateString()}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <Link 
-                        to="/profile?tab=notifications" 
-                        onClick={() => setShowNotifications(false)}
-                        className="block py-3 text-center text-[10px] uppercase tracking-widest font-bold border-t border-border/50 hover:bg-white/5 transition-colors"
-                      >
-                        View All Activity
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <button
+                onClick={() => {
+                  const next = !showNotifications;
+                  setShowNotifications(next);
+                  setShowUserMenu(false);
+                  if (next && authState.unreadCount > 0) {
+                    markAllNotificationsRead();
+                  }
+                }}
+                className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center relative group"
+              >
+                <Bell className="h-5 w-5" strokeWidth={1.5} />
+                {authState.unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
+                    {authState.unreadCount > 9 ? '9+' : authState.unreadCount}
+                  </span>
+                )}
+              </button>
             )}
 
             {/* User Account - Visible on mobile with new style */}
@@ -209,9 +156,9 @@ export default function Header() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-64 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-2 origin-top-right z-50 overflow-hidden"
+                    className="absolute -right-4 sm:right-0 mt-3 w-64 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-2 origin-top-right z-50 overflow-hidden"
                   >
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.1 }}
@@ -220,7 +167,7 @@ export default function Header() {
                       <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
                       <div className="text-sm font-medium truncate">{authState.user?.email}</div>
                     </motion.div>
-                    
+
                     <motion.div
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -260,6 +207,85 @@ export default function Header() {
                   </span>
                 )}
               </Link>
+            )}
+          </div>
+
+          {/* DYNAMIC DROPDOWNS: Anchored to the main header content area for stability */}
+          <AnimatePresence>
+            {showNotifications && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-6 sm:right-10 top-[calc(100%+0.5rem)] w-[calc(100vw-3rem)] sm:w-80 max-w-[360px] bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl origin-top-right z-50 overflow-hidden"
+              >
+                <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-widest">Notifications</div>
+                  {authState.unreadCount > 0 && (
+                    <button 
+                      onClick={() => markAllNotificationsRead()} 
+                      className="text-[9px] uppercase tracking-widest text-accent hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-[400px] overflow-y-auto no-scrollbar">
+                  {authState.notifications.length === 0 ? (
+                    <div className="py-12 text-center text-xs text-muted-foreground italic">No new notifications</div>
+                  ) : (
+                    authState.notifications.slice(0, 5).map((n) => (
+                      <div 
+                        key={n.id} 
+                        className={`p-4 border-b border-border/30 last:border-0 hover:bg-white/5 transition-colors cursor-pointer ${!n.is_read ? 'bg-accent/5' : ''}`}
+                        onClick={() => {
+                          if (n.link) navigate(n.link);
+                          setShowNotifications(false);
+                        }}
+                      >
+                        <div className="font-medium text-xs mb-1">{n.title}</div>
+                        <div className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</div>
+                        <div className="text-[9px] text-muted-foreground/50 mt-2 uppercase tracking-tight">
+                          {new Date(n.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Link 
+                  to="/profile?tab=notifications" 
+                  onClick={() => setShowNotifications(false)}
+                  className="block py-3 text-center text-[10px] uppercase tracking-widest font-bold border-t border-border/50 hover:bg-white/5 transition-colors"
+                >
+                  View All Activity
+                </Link>
+              </motion.div>
+            )}
+
+            {showUserMenu && authState.isAuthenticated && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-6 sm:right-10 top-[calc(100%+0.5rem)] w-[min(256px,calc(100vw-3rem))] sm:w-64 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-2 origin-top-right z-50 overflow-hidden"
+              >
+                <div className="py-3 px-4 border-b border-border/50 mb-1">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
+                  <div className="text-sm font-medium truncate">{authState.user?.email}</div>
+                </div>
+                
+                <Link to={isAdmin ? "/admin" : "/profile"} onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors rounded-lg">
+                  {isAdmin ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                  {isAdmin ? "Admin Panel" : "My Profile"}
+                </Link>
+
+                <button
+                  onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+                >
+                  <LogOut className="h-4 w-4" /> Sign Out
+                </button>
+              </motion.div>
             )}
           </div>
         </div>
@@ -324,21 +350,21 @@ export default function Header() {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
               className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[150] lg:hidden"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed inset-y-0 left-0 w-[85%] sm:w-[60%] md:w-[45%] bg-background z-[160] lg:hidden flex flex-col shadow-2xl border-r border-border"
             >
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.8 }}
@@ -351,7 +377,7 @@ export default function Header() {
               </motion.div>
 
               <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -381,8 +407,8 @@ export default function Header() {
                       )}
                     </div>
                   ) : (
-                    <Link 
-                      to="/login" 
+                    <Link
+                      to="/login"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center justify-between p-6 bg-secondary/30 rounded-2xl hover:bg-secondary/50 transition-colors border border-border/50"
                     >
@@ -414,27 +440,27 @@ export default function Header() {
                     </motion.div>
                   ))}
                 </nav>
-                
+
                 <div className="h-20" /> {/* Scroll spacer */}
               </div>
 
-            <motion.div 
-              initial={{ opacity: 0, y: 20, filter: "blur(4px)" }}
-              whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="p-8 border-t border-border bg-secondary/5"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Appearance</span>
-                <ThemeToggle />
-              </div>
-              <div className="flex gap-8">
-                <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Story</Link>
-                <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Contact</Link>
-                <Link to="/journal" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Journal</Link>
-              </div>
-            </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20, filter: "blur(4px)" }}
+                whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="p-8 border-t border-border bg-secondary/5"
+              >
+                <div className="flex items-center justify-between mb-8">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Appearance</span>
+                  <ThemeToggle />
+                </div>
+                <div className="flex gap-8">
+                  <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Story</Link>
+                  <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Contact</Link>
+                  <Link to="/journal" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Journal</Link>
+                </div>
+              </motion.div>
             </motion.div>
           </>
         )}
