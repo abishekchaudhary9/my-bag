@@ -264,6 +264,12 @@ export const ordersApi = {
       body: JSON.stringify(data),
     }),
 
+  khaltiInitiate: (data: any) =>
+    request<{ pidx: string; payment_url: string }>("/orders/khalti-initiate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   list: () => request<{ orders: any[] }>("/orders"),
 
   get: (orderNumber: string) => request<{ order: any }>(`/orders/${orderNumber}`),
@@ -312,6 +318,8 @@ export const couponsApi = {
       method: "POST",
       body: JSON.stringify({ code }),
     }),
+  list: () =>
+    request<{ coupons: { code: string; pct: number; description: string; terms: string }[] }>("/coupons"),
 };
 
 // ─── Contact ─────────────────────────────────────────────────
@@ -417,7 +425,7 @@ export const adminApi = {
       body: JSON.stringify(data),
     }),
   coupons: () => request<{ coupons: any[] }>("/admin/coupons"),
-  createCoupon: (data: { code: string, discount_pct: number, active: boolean }) =>
+  createCoupon: (data: { code: string, discount_pct: number, active: boolean, description?: string, terms?: string }) =>
     request<{ message: string }>("/admin/coupons", {
       method: "POST",
       body: JSON.stringify(data),

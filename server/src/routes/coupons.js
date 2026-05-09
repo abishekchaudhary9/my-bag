@@ -5,5 +5,6 @@ const asyncHandler = require("../utils/asyncHandler");
 const router = express.Router();
 
 router.post("/validate", asyncHandler(couponController.validateCoupon));
+router.get("/", asyncHandler(couponController.listActiveCoupons));
 
 module.exports = router;

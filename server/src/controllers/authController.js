@@ -17,7 +17,9 @@ async function googleLogin(req, res) {
 }
 
 async function firebaseLogin(req, res) {
-  const result = await authService.loginWithFirebase(req.body);
+  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
+  const userAgent = req.headers["user-agent"] || "Unknown Device";
+  const result = await authService.loginWithFirebase({ ...req.body, ip, userAgent });
   res.json(result);
 }
 

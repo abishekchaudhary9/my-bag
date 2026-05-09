@@ -116,39 +116,40 @@ export default function Login() {
             </div>
           )}
 
-          <div className="mb-8 grid grid-cols-2 border border-border bg-background p-1">
+          <div className="mb-8 flex border-b border-border">
             <button
               type="button"
               onClick={() => setMode("email")}
-              className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs uppercase tracking-[0.16em] transition-colors ${
-                mode === "email" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+              className={`flex-1 pb-4 text-xs uppercase tracking-[0.2em] transition-all duration-300 ${
+                mode === "email" ? "border-b-2 border-foreground text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Mail className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Email
+              Email Access
             </button>
             <button
               type="button"
               onClick={() => setMode("phone")}
-              className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs uppercase tracking-[0.16em] transition-colors ${
-                mode === "phone" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+              className={`flex-1 pb-4 text-xs uppercase tracking-[0.2em] transition-all duration-300 ${
+                mode === "phone" ? "border-b-2 border-accent text-accent font-medium" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Phone className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Phone
+              <span className="flex items-center justify-center gap-2">
+                <Phone className="h-3 w-3" strokeWidth={2} />
+                Instant Login
+              </span>
             </button>
           </div>
 
           {error && (
-            <div className="mb-6 bg-destructive/10 p-4 text-sm text-destructive animate-fade-in">
+            <div className="mb-6 bg-destructive/10 p-4 text-sm text-destructive animate-fade-in border-l-2 border-destructive">
               {error}
             </div>
           )}
 
           {mode === "email" ? (
-            <form onSubmit={handleEmailSubmit} className="space-y-6">
-              <label className="block">
-                <span className="eyebrow">Email Address</span>
+            <form onSubmit={handleEmailSubmit} className="space-y-6 animate-fade-in">
+              <label className="block group">
+                <span className="eyebrow group-focus-within:text-foreground transition-colors">Email Address</span>
                 <input
                   id="login-email"
                   type="email"
@@ -160,8 +161,8 @@ export default function Login() {
                 />
               </label>
 
-              <label className="block">
-                <span className="eyebrow">Password</span>
+              <label className="block group">
+                <span className="eyebrow group-focus-within:text-foreground transition-colors">Password</span>
                 <div className="relative">
                   <input
                     id="login-password"
@@ -169,6 +170,7 @@ export default function Login() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
                     placeholder="Password"
                     className="mt-2 w-full border-b border-border bg-transparent py-3 pr-10 text-base transition-colors focus:border-foreground focus:outline-none"
                   />
@@ -185,9 +187,9 @@ export default function Login() {
               <div className="flex items-center justify-between text-xs">
                 <label className="flex cursor-pointer items-center gap-2">
                   <input type="checkbox" className="accent-accent" />
-                  <span className="text-muted-foreground">Remember me</span>
+                  <span className="text-muted-foreground">Keep me signed in</span>
                 </label>
-                <Link to="/forgot-password" className="link-underline text-muted-foreground hover:text-foreground">
+                <Link to="/forgot-password" title="Recover account" className="link-underline text-muted-foreground hover:text-foreground">
                   Forgot password?
                 </Link>
               </div>
@@ -195,23 +197,33 @@ export default function Login() {
               <SubmitButton loading={loading} label="Sign In" />
             </form>
           ) : (
-            <form onSubmit={phoneCodeSent ? handleConfirmPhoneCode : handleSendPhoneCode} className="space-y-6">
+            <form onSubmit={phoneCodeSent ? handleConfirmPhoneCode : handleSendPhoneCode} className="space-y-6 animate-fade-in">
+              <div className="bg-secondary/30 p-5 border border-border/50 mb-2">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground leading-relaxed">
+                  Enter your mobile number to receive a secure <span className="text-foreground font-medium">OTP via SMS</span>. 
+                  This is the fastest way to access your Maison account.
+                </p>
+              </div>
+
               <label className="block">
-                <span className="eyebrow">Phone Number</span>
-                <input
-                  id="login-phone"
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+977 98XXXXXXXX"
-                  className="mt-2 w-full border-b border-border bg-transparent py-3 text-base transition-colors focus:border-foreground focus:outline-none"
-                />
+                <span className="eyebrow">Mobile Number</span>
+                <div className="relative">
+                  <span className="absolute left-0 top-1/2 mt-1 -translate-y-1/2 text-sm font-medium text-muted-foreground">+977</span>
+                  <input
+                    id="login-phone"
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                    placeholder="98XXXXXXXX"
+                    className="mt-2 w-full border-b border-border bg-transparent py-3 pl-10 text-base transition-colors focus:border-accent focus:outline-none"
+                  />
+                </div>
               </label>
 
               {phoneCodeSent && (
-                <label className="block animate-fade-in">
-                  <span className="eyebrow">Verification Code</span>
+                <label className="block animate-fade-up">
+                  <span className="eyebrow">6-Digit Verification Code</span>
                   <div className="relative">
                     <MessageSquare className="absolute left-0 top-1/2 mt-1 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
                     <input
@@ -221,26 +233,43 @@ export default function Login() {
                       required
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
-                      placeholder="6-digit code"
-                      className="mt-2 w-full border-b border-border bg-transparent py-3 pl-7 text-base transition-colors focus:border-foreground focus:outline-none"
+                      placeholder="0 0 0 0 0 0"
+                      className="mt-2 w-full border-b border-border bg-transparent py-3 pl-8 text-xl tracking-[0.5em] font-display transition-colors focus:border-accent focus:outline-none"
                     />
                   </div>
+                  <p className="mt-4 text-[11px] text-muted-foreground text-center">
+                    Didn't receive the code? {" "}
+                    <button type="button" onClick={handleSendPhoneCode} className="text-accent hover:underline font-medium">Resend Code</button>
+                  </p>
                 </label>
               )}
 
-              <SubmitButton loading={loading} label={phoneCodeSent ? "Verify & Sign In" : "Send Code"} />
-              {phoneCodeSent && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhoneCodeSent(false);
-                    setOtp("");
-                  }}
-                  className="w-full text-xs uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground"
+              <SubmitButton loading={loading} label={phoneCodeSent ? "Verify Identity" : "Send Instant Code"} />
+              
+              <div className="pt-4 flex flex-col gap-4 items-center">
+                {phoneCodeSent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoneCodeSent(false);
+                      setOtp("");
+                    }}
+                    className="text-xs uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Change phone number
+                  </button>
+                )}
+                
+                <a 
+                  href="https://wa.me/9779800000000" // Placeholder for support
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                 >
-                  Use another phone number
-                </button>
-              )}
+                  <MessageSquare className="h-3.5 w-3.5 fill-emerald-600/10" strokeWidth={2} />
+                  Need help? Chat on WhatsApp
+                </a>
+              </div>
             </form>
           )}
 

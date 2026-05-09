@@ -17,12 +17,12 @@ function normalizeNepalPhone(value) {
 
 function isValidNepalPhone(value) {
   const normalized = normalizeNepalPhone(value);
-  return /^(?:\+977)?9[78]\d{8}$/.test(normalized);
+  return /^(?:\+977)?9[678]\d{8}$/.test(normalized);
 }
 
 function formatNepalPhone(value) {
   const normalized = normalizeNepalPhone(value);
-  if (/^9[78]\d{8}$/.test(normalized)) {
+  if (/^9[678]\d{8}$/.test(normalized)) {
     return `+977${normalized}`;
   }
   return normalized;

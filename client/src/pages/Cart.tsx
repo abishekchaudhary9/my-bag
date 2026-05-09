@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Minus, Plus, X, Truck, ShieldCheck, Tag } from "lucide-react";
+import { Minus, Plus, X, Truck, ShieldCheck, ShoppingBag, ArrowRight } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useStore, CartItem } from "@/context/StoreContext";
 import { useState } from "react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function CartPage() {
   const { state, totals, removeItem, setQty, saveForLater, moveToCart, applyCoupon, clearCoupon, itemKey } = useStore();
@@ -15,80 +16,86 @@ export default function CartPage() {
   if (isAdmin) {
     return (
       <Layout>
-        <div className="container-luxe py-32 text-center animate-fade-up">
-          <div className="eyebrow mb-4">Restricted</div>
-          <h1 className="font-display text-5xl md:text-6xl">Admin accounts cannot place orders.</h1>
-          <p className="mt-5 text-muted-foreground max-w-md mx-auto">
-            Please use a customer account to place orders. Admin accounts are for store management only.
+        <div className="container-luxe py-40 text-center space-y-8 animate-fade-up">
+          <div className="eyebrow">Restricted</div>
+          <h1 className="font-display text-5xl md:text-7xl tracking-tighter">Admin accounts cannot place orders.</h1>
+          <p className="mt-5 text-muted-foreground max-w-lg mx-auto font-light leading-relaxed">
+            Please use a customer account to experience the full shopping journey.
           </p>
-          <Link
-            to="/admin"
-            className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
-          >
-            Go to Admin Panel
-          </Link>
+          <Link to="/admin" className="inline-block bg-foreground text-background px-12 py-5 text-[11px] font-bold uppercase tracking-[0.3em] hover:bg-accent transition-all duration-500">Go to Admin Panel</Link>
         </div>
       </Layout>
     );
   }
-
-  const submitCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = applyCoupon(code);
-    if (ok) toast.success("Coupon applied");
-    else toast.error("Invalid code", { description: "Try WELCOME10, MAISON15, or ATELIER20" });
-  };
 
   if (state.cart.length === 0 && state.saved.length === 0) {
     return (
       <Layout>
-        <div className="container-luxe py-32 text-center animate-fade-up">
-          <div className="eyebrow mb-4">Your bag</div>
-          <h1 className="font-display text-5xl md:text-6xl">Quietly empty.</h1>
-          <p className="mt-5 text-muted-foreground max-w-md mx-auto">
-            Nothing inside yet. Begin with a piece from the collection.
-          </p>
-          <Link
-            to="/shop"
-            className="mt-10 inline-flex bg-foreground text-background px-7 py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500"
-          >
-            Browse the Collection
-          </Link>
+        <div className="container-luxe py-40 text-center space-y-8 animate-fade-up">
+          <div className="flex justify-center">
+            <div className="h-24 w-24 bg-secondary/30 rounded-full flex items-center justify-center">
+              <ShoppingBag className="h-10 w-10 text-muted-foreground/40" strokeWidth={1} />
+            </div>
+          </div>
+          <h1 className="font-display text-5xl md:text-7xl tracking-tighter">Quietly empty.</h1>
+          <Link to="/shop" className="inline-block bg-foreground text-background px-12 py-5 text-[11px] font-bold uppercase tracking-[0.3em] hover:bg-accent transition-all duration-500">Browse the Collection</Link>
         </div>
       </Layout>
     );
   }
 
+  const submitCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const ok = await applyCoupon(code);
+    if (ok) { toast.success("Privilege code applied"); setCode(""); }
+    else toast.error("Invalid code");
+  };
+
   return (
     <Layout>
-      <section className="container-luxe pt-12 pb-6">
-        <div className="eyebrow mb-3">Your bag</div>
-        <h1 className="font-display text-4xl md:text-5xl">Checkout</h1>
+      <section className="bg-secondary/10 border-b border-border/50">
+        <div className="container-luxe py-20 md:py-28">
+           <div className="eyebrow mb-6 text-accent">Summary</div>
+           <h1 className="font-display text-6xl md:text-8xl tracking-tighter leading-none">Your Selection</h1>
+        </div>
       </section>
 
-      <section className="container-luxe pb-24 grid lg:grid-cols-[1fr_400px] gap-12 lg:gap-16">
-        <div className="space-y-10">
+      <section className="container-luxe py-20 grid lg:grid-cols-12 gap-16 lg:gap-24">
+        <div className="lg:col-span-8 space-y-16">
           {state.cart.length > 0 && (
-            <div>
-              <div className="eyebrow mb-5">In your bag · {totals.count}</div>
-              <ul className="hairline">
-                {state.cart.map((item) => (
-                  <Row
-                    key={itemKey(item)}
-                    item={item}
-                    onRemove={() => removeItem(itemKey(item))}
-                    onQty={(q) => setQty(itemKey(item), q)}
-                    onSave={() => saveForLater(itemKey(item))}
-                  />
-                ))}
+            <div className="space-y-10">
+              <div className="flex items-center justify-between border-b border-border/50 pb-6">
+                <div className="eyebrow tracking-[0.3em]">Current Bag ({totals.count})</div>
+              </div>
+              <ul className="space-y-8">
+                <AnimatePresence initial={false}>
+                  {state.cart.map((item) => (
+                    <motion.li
+                      key={itemKey(item)}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <Row
+                        item={item}
+                        onRemove={() => { removeItem(itemKey(item)); toast.info("Item removed from bag"); }}
+                        onQty={(q) => setQty(itemKey(item), q)}
+                        onSave={() => { saveForLater(itemKey(item)); toast.success("Saved for later"); }}
+                      />
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
               </ul>
             </div>
           )}
 
           {state.saved.length > 0 && (
-            <div>
-              <div className="eyebrow mb-5">Saved for later · {state.saved.length}</div>
-              <ul className="hairline">
+            <div className="space-y-10 opacity-70">
+              <div className="flex items-center justify-between border-b border-border/50 pb-6">
+                <div className="eyebrow tracking-[0.3em]">Saved for Later ({state.saved.length})</div>
+              </div>
+              <ul className="space-y-8">
                 {state.saved.map((item) => (
                   <Row
                     key={itemKey(item)}
@@ -104,55 +111,50 @@ export default function CartPage() {
           )}
         </div>
 
-        {/* SUMMARY */}
-        <aside className="lg:sticky lg:top-28 lg:self-start bg-secondary/60 p-7 space-y-6">
-          <div>
-            <div className="eyebrow mb-4">Order summary</div>
-            <dl className="space-y-3 text-sm">
-              <Line label="Subtotal" value={`Rs ${totals.subtotal.toFixed(2)}`} />
-              {state.coupon && (
-                <Line
-                  label={
-                    <span className="flex items-center gap-2 text-accent">
-                      <Tag className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      {state.coupon.code} · −{state.coupon.pct}%
-                      <button onClick={clearCoupon} className="opacity-60 hover:opacity-100">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  }
-                  value={`−Rs ${totals.discount.toFixed(2)}`}
-                />
+        <aside className="lg:col-span-4 lg:sticky lg:top-32 lg:self-start">
+          <div className="glass p-8 space-y-8">
+            <div className="eyebrow mb-6">Order Summary</div>
+            <div className="space-y-4 pb-8 border-b border-border/50">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>Rs {totals.subtotal}</span>
+              </div>
+              {totals.discount > 0 && (
+                <div className="flex justify-between text-sm text-accent">
+                  <span>Discount</span>
+                  <span>- Rs {totals.discount}</span>
+                </div>
               )}
-              <Line label="Shipping" value={totals.shipping === 0 ? "Complimentary" : `Rs ${totals.shipping}`} />
-            </dl>
-            <div className="mt-5 pt-5 border-t border-border flex justify-between items-baseline">
-              <span className="font-display text-lg">Total</span>
-              <span className="font-display text-2xl">Rs {totals.total.toFixed(2)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Shipping</span>
+                <span className={totals.shipping === 0 ? "text-green-600 font-medium" : ""}>
+                  {totals.shipping === 0 ? "Complimentary" : `Rs ${totals.shipping}`}
+                </span>
+              </div>
             </div>
-          </div>
-
-          <form onSubmit={submitCoupon} className="flex border-b border-foreground/30 focus-within:border-foreground">
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="Promo code"
-              className="flex-1 bg-transparent py-2.5 text-sm focus:outline-none"
-            />
-            <button className="text-[12px] uppercase tracking-[0.18em] hover:text-accent">Apply</button>
-          </form>
-
-          <button
-            disabled={state.cart.length === 0}
-            onClick={() => navigate("/checkout")}
-            className="w-full bg-foreground text-background py-4 text-[13px] uppercase tracking-[0.18em] hover:bg-accent transition-colors duration-500 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Secure checkout
-          </button>
-
-          <div className="space-y-2.5 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2"><Truck className="h-3.5 w-3.5" strokeWidth={1.5} /> Complimentary shipping over Rs 250</div>
-            <div className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Secure payment · Stripe, PayPal, Apple Pay</div>
+            <div className="space-y-6">
+              <div className="flex justify-between text-xl font-medium tracking-tight">
+                <span>Total</span>
+                <span>Rs {totals.total}</span>
+              </div>
+              <button 
+                onClick={() => navigate("/checkout")}
+                className="w-full bg-foreground text-background h-16 text-[11px] font-bold uppercase tracking-[0.3em] hover:bg-accent transition-all duration-500 flex items-center justify-center gap-4 group"
+              >
+                Begin Checkout
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+              </button>
+            </div>
+            <form onSubmit={submitCoupon} className="pt-6 border-t border-border/50">
+               <div className="flex gap-2">
+                 <input value={code} onChange={e => setCode(e.target.value)} placeholder="Privilege Code" className="flex-1 bg-secondary/30 border-none px-4 py-3 text-[10px] font-bold uppercase tracking-widest focus:ring-1 focus:ring-accent outline-none" />
+                 <button className="px-6 bg-secondary/50 text-[9px] font-bold uppercase tracking-widest hover:bg-secondary/80 transition-colors">Apply</button>
+               </div>
+            </form>
+            <div className="pt-4 space-y-4">
+               <div className="flex items-center gap-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60"><ShieldCheck className="h-4 w-4" strokeWidth={1} /> Secure encryption</div>
+               <div className="flex items-center gap-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60"><Truck className="h-4 w-4" strokeWidth={1} /> 2-3 Day Express</div>
+            </div>
           </div>
         </aside>
       </section>
@@ -160,46 +162,32 @@ export default function CartPage() {
   );
 }
 
-function Row({
-  item, saved, onRemove, onQty, onSave,
-}: {
-  item: CartItem; saved?: boolean;
-  onRemove: () => void; onQty: (q: number) => void; onSave: () => void;
-}) {
+function Row({ item, onRemove, onQty, onSave, saved = false }: { item: CartItem; onRemove: () => void; onQty: (q: number) => void; onSave: () => void; saved?: boolean }) {
   return (
-    <li className="grid grid-cols-[100px_1fr_auto] md:grid-cols-[120px_1fr_auto] gap-5 py-6 border-t border-border first:border-t-0">
-      <Link to={`/product/${item.slug}`} className="block bg-secondary aspect-[4/5] overflow-hidden">
-        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
-      </Link>
-      <div className="min-w-0">
-        <Link to={`/product/${item.slug}`} className="font-display text-lg link-underline">{item.name}</Link>
-        <div className="text-xs text-muted-foreground mt-1">{item.color} · {item.size}</div>
-        <div className="mt-3 flex items-center gap-4 text-xs">
-          {!saved && (
-            <div className="flex items-center border border-border">
-              <button onClick={() => onQty(item.qty - 1)} className="p-1.5 hover:bg-secondary"><Minus className="h-3 w-3" /></button>
-              <span className="w-7 text-center">{item.qty}</span>
-              <button onClick={() => onQty(item.qty + 1)} className="p-1.5 hover:bg-secondary"><Plus className="h-3 w-3" /></button>
-            </div>
-          )}
-          <button onClick={onSave} className="link-underline text-muted-foreground hover:text-foreground">
-            {saved ? "Move to bag" : "Save for later"}
-          </button>
-          <button onClick={onRemove} className="link-underline text-muted-foreground hover:text-destructive">Remove</button>
+    <div className="grid grid-cols-[120px_1fr] gap-8 group">
+      <div className="aspect-[4/5] bg-secondary overflow-hidden">
+        <img src={item.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="" />
+      </div>
+      <div className="flex flex-col justify-between py-1">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <h3 className="font-display text-2xl tracking-tight">{item.name}</h3>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{item.color} · {item.size}</div>
+          </div>
+          <div className="text-xl font-medium">Rs {item.price * item.qty}</div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center glass">
+            <button onClick={() => onQty(Math.max(1, item.qty - 1))} className="p-3 hover:bg-secondary transition-colors" disabled={saved}><Minus className="h-3 w-3" strokeWidth={1.5} /></button>
+            <span className="w-8 text-center text-xs font-bold">{item.qty}</span>
+            <button onClick={() => onQty(item.qty + 1)} className="p-3 hover:bg-secondary transition-colors" disabled={saved}><Plus className="h-3 w-3" strokeWidth={1.5} /></button>
+          </div>
+          <div className="flex items-center gap-6">
+            <button onClick={onSave} className="text-[10px] font-bold uppercase tracking-[0.2em] link-underline">{saved ? "Move to Bag" : "Save for Later"}</button>
+            <button onClick={onRemove} className="text-[10px] font-bold uppercase tracking-[0.2em] text-destructive/60 hover:text-destructive transition-colors">Remove</button>
+          </div>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-base">Rs {(item.price * item.qty).toFixed(2)}</div>
-      </div>
-    </li>
-  );
-}
-
-function Line({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-center">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
     </div>
   );
 }

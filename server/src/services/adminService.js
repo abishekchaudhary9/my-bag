@@ -308,10 +308,10 @@ async function listCoupons() {
   return rows;
 }
 
-async function createCoupon({ code, discount_pct, active }) {
+async function createCoupon({ code, discount_pct, active, description, terms }) {
   await pool.query(
-    "INSERT INTO coupons (code, discount_pct, active) VALUES (?, ?, ?)",
-    [code.toUpperCase(), discount_pct, active ? 1 : 0]
+    "INSERT INTO coupons (code, discount_pct, active, description, terms) VALUES (?, ?, ?, ?, ?)",
+    [code.toUpperCase(), discount_pct, active ? 1 : 0, description || null, terms || null]
   );
   return { message: "Coupon created" };
 }

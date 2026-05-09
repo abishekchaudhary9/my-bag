@@ -7,6 +7,8 @@ const { mapUser } = require("../models/userModel");
 const createHttpError = require("../utils/httpError");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
 const { emitEvent } = require("../lib/socket");
+const { sendEmail } = require("../utils/mailer");
+const { loginAlertTemplate, welcomeTemplate } = require("../utils/emailTemplates");
 
 function signToken(user) {
   return jwt.sign(
@@ -53,10 +55,11 @@ async function loginWithGoogle() {
   throw firebaseOnlyError();
 }
 
-async function loginWithFirebase({ idToken, profile = {} }) {
+async function loginWithFirebase({ idToken, profile, ip, userAgent }) {
   if (!idToken) {
     throw createHttpError(400, "Firebase ID token is required.");
   }
+  profile = profile || {};
 
   let decoded;
   let firebaseUser;
@@ -102,7 +105,8 @@ async function loginWithFirebase({ idToken, profile = {} }) {
     const nextFirstName = firstName || existing.first_name;
     const nextLastName = lastName || existing.last_name;
 
-    const isVerified = decoded.email_verified ? 1 : (existing.email_verified ? 1 : 0);
+    const isPhoneAuth = dbEmail.includes("phone.maison.local");
+    const isVerified = decoded.email_verified ? 1 : (existing.email_verified ? 1 : (isPhoneAuth ? 1 : 0));
 
     await pool.query(
       `UPDATE users
@@ -122,6 +126,22 @@ async function loginWithFirebase({ idToken, profile = {} }) {
 
     const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [existing.id]);
     const updatedUser = updatedRows[0];
+
+    // Security Alert: Notify user of new login
+    if (updatedUser.email && !updatedUser.email.includes("phone.maison.local")) {
+      sendEmail({
+        to: updatedUser.email,
+        subject: "Security Alert: New Sign-in to Maison",
+        html: loginAlertTemplate({
+          name: updatedUser.first_name,
+          email: updatedUser.email,
+          ip: ip || "Unknown",
+          userAgent: userAgent || "Unknown Device",
+          date: new Date().toLocaleString("en-US", { timeZone: "Asia/Kathmandu" }) + " (NPT)"
+        })
+      }).catch(err => console.error("Login Alert Email Failed:", err));
+    }
+
     return { user: mapUser(updatedUser), token: signToken(updatedUser) };
   }
 
@@ -143,9 +163,33 @@ async function loginWithFirebase({ idToken, profile = {} }) {
   // Real-time: Notify admins of new customer
   emitEvent("admins", "new_customer", { customerId: result.insertId, name: `${firstName} ${lastName}` });
   
-  // For new signups, we don't return a token if they aren't verified yet
-  // This forces the frontend to rely on the 'Verify' screen logic
-  const token = createdUser.email_verified ? signToken(createdUser) : null;
+  // Security Alert & Welcome: Notify user of new account/login
+  if (createdUser.email && !createdUser.email.includes("phone.maison.local")) {
+    // 1. Send Welcome Email
+    sendEmail({
+      to: createdUser.email,
+      subject: "Welcome to Maison",
+      html: welcomeTemplate({ name: createdUser.first_name })
+    }).catch(err => console.error("Welcome Email Failed:", err));
+
+    // 2. Send Security Alert
+    sendEmail({
+      to: createdUser.email,
+      subject: "Security Alert: New Sign-in to Maison",
+      html: loginAlertTemplate({
+        name: createdUser.first_name,
+        email: createdUser.email,
+        ip: ip || "Unknown",
+        userAgent: userAgent || "Unknown Device",
+        date: new Date().toLocaleString("en-US", { timeZone: "Asia/Kathmandu" }) + " (NPT)"
+      })
+    }).catch(err => console.error("Login Alert Email Failed:", err));
+  }
+
+  // For phone users or verified emails, we return a token immediately
+  const isPhoneAuth = dbEmail.includes("phone.maison.local");
+  const isVerified = createdUser.email_verified || isPhoneAuth;
+  const token = isVerified ? signToken(createdUser) : null;
   return { user: mapUser(createdUser), token };
 }
 

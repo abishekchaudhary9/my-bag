@@ -53,7 +53,7 @@ async function createQuestion(userId, productId, { text }) {
         admin.id,
         "New Product Question",
         `A customer asked a question about the ${productInfo[0].name}.`,
-        `/product/${productInfo[0].slug}#question-${questionId}`
+        `/admin?tab=feedback&type=question&id=${questionId}`
       );
     }
   }
@@ -99,18 +99,23 @@ async function answerQuestion(user, questionId, { answer }) {
   return { message: "Answer added successfully." };
 }
 
-async function updateQuestion(userId, questionId, { text }) {
+async function updateQuestion(user, questionId, { text }) {
   if (!text) {
     throw createHttpError(400, "Question text is required.");
   }
 
   const [question] = await pool.query(
-    "SELECT * FROM product_questions WHERE id = ? AND user_id = ?",
-    [questionId, userId]
+    "SELECT * FROM product_questions WHERE id = ?",
+    [questionId]
   );
 
   if (question.length === 0) {
-    throw createHttpError(403, "Unauthorized or question not found.");
+    throw createHttpError(404, "Question not found.");
+  }
+
+  // Allow admin OR owner
+  if (user.role !== "admin" && question[0].user_id !== user.id) {
+    throw createHttpError(403, "Unauthorized.");
   }
 
   await pool.query(
@@ -121,14 +126,19 @@ async function updateQuestion(userId, questionId, { text }) {
   return { message: "Question updated successfully." };
 }
 
-async function deleteQuestion(userId, questionId) {
+async function deleteQuestion(user, questionId) {
   const [question] = await pool.query(
-    "SELECT * FROM product_questions WHERE id = ? AND user_id = ?",
-    [questionId, userId]
+    "SELECT * FROM product_questions WHERE id = ?",
+    [questionId]
   );
 
   if (question.length === 0) {
-    throw createHttpError(403, "Unauthorized or question not found.");
+    throw createHttpError(404, "Question not found.");
+  }
+
+  // Allow admin OR owner
+  if (user.role !== "admin" && question[0].user_id !== user.id) {
+    throw createHttpError(403, "Unauthorized.");
   }
 
   await pool.query("DELETE FROM product_questions WHERE id = ?", [questionId]);

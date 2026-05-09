@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
@@ -22,6 +22,7 @@ import {
   Trash2,
   Truck,
   Users,
+  Bell,
 } from "lucide-react";
 import {
   Area,
@@ -39,16 +40,19 @@ import {
 } from "recharts";
 import Layout from "@/components/site/Layout";
 import { useAuth } from "@/context/AuthContext";
-import { adminApi, productsApi } from "@/lib/api";
+import { adminApi, productsApi, notificationsApi, reviewsApi, questionsApi } from "@/lib/api";
 import { products as localProducts } from "@/data/products";
 import ProductModal from "@/components/admin/ProductModal";
 import OrderStatusModal from "@/components/admin/OrderStatusModal";
 import OrderDetailsModal from "@/components/admin/OrderDetailsModal";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import PromptModal from "@/components/admin/PromptModal";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 
 /* ─── Admin Layout ─────────────────────────────────────── */
-function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayout({ children, notificationCount, onBellClick }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void }) {
   const { state, logout } = useAuth();
   const navigate = useNavigate();
   const handleLogout = () => { logout(); toast.success("Signed out"); navigate("/"); };
@@ -58,20 +62,48 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="container-luxe flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center gap-4">
-            <Link to="/admin" className="font-display text-xl md:text-2xl tracking-tight">MAISON<span className="text-accent">.</span></Link>
-            <span className="text-[10px] uppercase tracking-[0.18em] px-2.5 py-1 bg-accent text-accent-foreground flex items-center gap-1.5">
+            <Link to="/admin" className="font-display text-xl md:text-2xl tracking-tight">MAISON</Link>
+            <span className="hidden sm:flex text-[10px] uppercase tracking-[0.18em] px-2.5 py-1 bg-accent text-accent-foreground items-center gap-1.5">
               <Shield className="h-3 w-3" strokeWidth={2} /> Admin
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-muted-foreground hidden sm:inline">{state.user?.firstName} {state.user?.lastName}</span>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs text-destructive hover:underline">
-              <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} /> Sign Out
+          <div className="flex items-center gap-3 sm:gap-6">
+            <div className="hidden xs:block">
+              <ThemeToggle />
+            </div>
+            <div className="flex items-center gap-2 sm:gap-4 border-r border-border pr-3 sm:pr-6">
+              <button 
+                onClick={onBellClick}
+                className="relative p-2 text-muted-foreground hover:text-foreground transition-colors group"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5" strokeWidth={1.5} />
+                {notificationCount ? (
+                  <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                ) : null}
+              </button>
+              <div className="hidden sm:block">
+                <div className="text-[11px] font-medium leading-none mb-1">{state.user?.firstName} {state.user?.lastName}</div>
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Administrator</div>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs text-destructive hover:underline font-medium">
+              <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} /> <span className="hidden xs:inline">Sign Out</span>
             </button>
           </div>
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          {children}
+        </motion.div>
+      </main>
     </div>
   );
 }
@@ -119,22 +151,31 @@ function MetricCard({
   value,
   detail,
   tone = "text-muted-foreground",
+  index = 0,
 }: {
   icon: any;
   label: string;
   value: React.ReactNode;
   detail: string;
   tone?: string;
+  index?: number;
 }) {
   return (
-    <div className="border border-border bg-background p-5 transition-colors hover:border-foreground/30">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+      className="border border-border bg-background p-5 transition-all duration-500 hover:border-foreground/30 hover:bg-secondary/5 group"
+    >
       <div className="flex items-center justify-between gap-4">
-        <Icon className={`h-5 w-5 ${tone}`} strokeWidth={1.5} />
-        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+        <div className={`p-2 rounded-lg bg-secondary/50 group-hover:bg-background transition-colors`}>
+          <Icon className={`h-5 w-5 ${tone}`} strokeWidth={1.5} />
+        </div>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-bold">{label}</span>
       </div>
-      <div className="mt-5 break-words font-display text-2xl tracking-tight md:text-3xl">{value}</div>
-      <div className="mt-2 text-xs text-muted-foreground">{detail}</div>
-    </div>
+      <div className="mt-6 break-words font-display text-2xl tracking-tight md:text-3xl">{value}</div>
+      <div className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground/70">{detail}</div>
+    </motion.div>
   );
 }
 
@@ -144,24 +185,31 @@ function Panel({
   action,
   children,
   className = "",
+  index = 0,
 }: {
   title: string;
   eyebrow?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  index?: number;
 }) {
   return (
-    <div className={`border border-border bg-background p-5 ${className}`}>
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+      className={`border border-border bg-background p-6 md:p-8 ${className}`}
+    >
+      <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          {eyebrow && <div className="eyebrow mb-2">{eyebrow}</div>}
-          <h2 className="font-display text-xl tracking-tight">{title}</h2>
+          {eyebrow && <div className="eyebrow mb-2 text-accent">{eyebrow}</div>}
+          <h2 className="font-display text-2xl md:text-3xl tracking-tight leading-none">{title}</h2>
         </div>
         {action}
       </div>
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -200,7 +248,45 @@ type Tab = "dashboard" | "products" | "orders" | "customers" | "feedback" | "not
 /* ─── Main Admin Page ──────────────────────────────────── */
 export default function Admin() {
   const { state, isAdmin } = useAuth();
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as Tab;
+  const [tab, setTab] = useState<Tab>(tabParam || "dashboard");
+
+  // Sync tab with URL
+  useEffect(() => {
+    if (tabParam && tabs.some(t => t.key === tabParam) && tabParam !== tab) {
+      setTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
+  // Auto-scroll and highlight when deep linking
+  useEffect(() => {
+    const id = searchParams.get("id");
+    const type = searchParams.get("type");
+    
+    if (id && tab === "feedback") {
+      const elementId = `feedback-${type}-${id}`;
+      // Small delay to ensure items are rendered
+      const timer = setTimeout(() => {
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add("ring-2", "ring-accent", "ring-offset-8");
+          setTimeout(() => element.classList.remove("ring-2", "ring-accent", "ring-offset-8"), 5000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    
+    if (id && tab === "orders") {
+      setOrderSearch(id);
+    }
+  }, [tab, searchParams]);
 
   /* Data states */
   const [stats, setStats] = useState<any>(null);
@@ -218,10 +304,18 @@ export default function Admin() {
   const [editOrder, setEditOrder] = useState<any | null>(null);
   const [viewOrder, setViewOrder] = useState<any | null>(null);
   const [viewOrderLoading, setViewOrderLoading] = useState(false);
+  const [showAddCoupon, setShowAddCoupon] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [searchQ, setSearchQ] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
   const [orderFilter, setOrderFilter] = useState("all");
+
+  /* New custom modal states */
+  const [deleteTargetCoupon, setDeleteTargetCoupon] = useState<any | null>(null);
+  const [deleteTargetReview, setDeleteTargetReview] = useState<any | null>(null);
+  const [deleteTargetQuestion, setDeleteTargetQuestion] = useState<any | null>(null);
+  const [editReviewTarget, setEditReviewTarget] = useState<any | null>(null);
+  const [editQuestionTarget, setEditQuestionTarget] = useState<any | null>(null);
 
   /* ─── Data fetching ─────────────────────────────────── */
   const fetchStats = useCallback(async () => {
@@ -310,36 +404,56 @@ export default function Admin() {
   useEffect(() => {
     if (!ioSocket || !isAdmin) return;
 
-    ioSocket.on("new_order", () => {
-      // Refresh key dashboard data
+    const notifyAdmin = (title: string, message: string, targetTab: Tab, id?: string) => {
+      toast(title, {
+        description: message,
+        action: {
+          label: "View",
+          onClick: () => {
+            handleTabChange(targetTab);
+            if (id) {
+              if (targetTab === "orders") setOrderSearch(id);
+              // For feedback/products we could add more logic
+            }
+          }
+        },
+        duration: 8000,
+      });
+    };
+
+    ioSocket.on("new_order", (data: any) => {
+      notifyAdmin("New Order", `Order #${data?.orderNumber || 'received'} just came in!`, "orders", data?.orderNumber);
       fetchStats();
       fetchOrders();
       fetchNotifications();
     });
 
     ioSocket.on("new_message", () => {
+      notifyAdmin("New Message", "A customer sent a new contact message.", "notifications");
       fetchNotifications();
-      // If we had a fetchMessages, we'd call it here
     });
 
-    ioSocket.on("new_review", () => {
+    ioSocket.on("new_review", (data: any) => {
+      notifyAdmin("New Review", `New review for ${data?.productName || 'a product'}.`, "feedback");
       fetchFeedback();
       fetchNotifications();
     });
 
-    ioSocket.on("new_question", () => {
+    ioSocket.on("new_question", (data: any) => {
+      notifyAdmin("New Question", `Customer asked a question about ${data?.productName || 'a product'}.`, "feedback");
       fetchFeedback();
       fetchNotifications();
     });
 
-    ioSocket.on("new_customer", () => {
+    ioSocket.on("new_customer", (data: any) => {
+      notifyAdmin("New Customer", `${data?.name || 'A new user'} just registered.`, "customers");
       fetchStats();
       fetchCustomers();
       fetchNotifications();
     });
 
     ioSocket.on("stock_update", () => {
-      fetchStats(); // Stats might include low stock warnings
+      fetchStats();
       fetchProducts();
     });
 
@@ -370,24 +484,36 @@ export default function Admin() {
     }
   };
 
-  const handleCreateCoupon = async () => {
-    const code = prompt("Enter coupon code (e.g., SUMMER20):");
-    if (!code) return;
-    const pct = prompt("Enter discount percentage (1-100):");
-    if (!pct || isNaN(Number(pct))) return;
+  const handleCreateCoupon = () => {
+    setShowAddCoupon(true);
+  };
 
+  const handleSaveCoupon = async (data: { code: string; discount_pct: number; description?: string; terms?: string }) => {
     try {
-      await adminApi.createCoupon({ code, discount_pct: Number(pct), active: true });
+      await adminApi.createCoupon({ ...data, active: true });
       toast.success("Coupon created!");
+      setShowAddCoupon(false);
       await fetchCoupons();
     } catch (err: any) {
       toast.error(err.message || "Failed to create coupon");
+      throw err;
+    }
+  };
+
+  const handleDeleteCoupon = async (id: number) => {
+    try {
+      await adminApi.deleteCoupon(Number(id));
+      toast.success("Coupon deleted");
+      setDeleteTargetCoupon(null);
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete coupon");
     }
   };
 
   const handleDeleteProduct = async (p: any) => {
     try {
-      await productsApi.delete(p.id);
+      await productsApi.delete(String(p.id));
       toast.success("Product deleted");
       setDeleteTarget(null);
       await fetchProducts();
@@ -569,8 +695,15 @@ export default function Admin() {
     );
   }
 
+  const unreadCount = useMemo(() => 
+    notifications.filter(n => n.user_id === state.user?.id && !n.is_read).length,
+  [notifications, state.user?.id]);
+
   return (
-    <AdminLayout>
+    <AdminLayout 
+      notificationCount={unreadCount} 
+      onBellClick={() => handleTabChange("notifications")}
+    >
       <section className="container-luxe pt-12 pb-6">
         <div className="flex items-center justify-between">
           <div>
@@ -584,27 +717,32 @@ export default function Admin() {
       </section>
 
       <section className="container-luxe pb-6">
-        <div className="relative md:hidden">
-          <select
-            value={tab}
-            onChange={(event) => {
-              const nextTab = event.target.value as Tab;
-              setTab(nextTab);
-              if (nextTab === "orders") fetchOrders(orderFilter);
-              if (nextTab === "dashboard") { fetchOrders(); fetchStats(); }
-              if (nextTab === "customers") fetchCustomers();
-              if (nextTab === "feedback") fetchFeedback();
-              if (nextTab === "notifications") fetchNotifications();
-              if (nextTab === "coupons") fetchCoupons();
-              if (nextTab === "products") fetchProducts();
-            }}
-            className="w-full appearance-none border border-border bg-background px-4 py-3 pr-10 text-[13px] uppercase tracking-[0.14em] text-foreground focus:border-foreground focus:outline-none"
-          >
-            {tabs.map((t) => (
-              <option key={t.key} value={t.key}>{t.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
+        <div className="md:hidden overflow-x-auto no-scrollbar border-b border-border">
+          <div className="flex whitespace-nowrap min-w-max pb-px">
+            {tabs.map((t) => {
+              const Icon = t.icon;
+              return (
+                <button 
+                  key={t.key} 
+                  onClick={() => { 
+                    handleTabChange(t.key);
+                    if (t.key === "orders") fetchOrders(orderFilter); 
+                    if (t.key === "dashboard") { fetchOrders(); fetchStats(); }
+                    if (t.key === "customers") fetchCustomers();
+                    if (t.key === "feedback") fetchFeedback();
+                    if (t.key === "notifications") fetchNotifications();
+                    if (t.key === "coupons") fetchCoupons();
+                    if (t.key === "products") fetchProducts();
+                  }}
+                  className={`flex items-center gap-2 px-6 py-4 text-[11px] uppercase tracking-[0.14em] border-b-2 transition-all ${
+                    tab === t.key ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.5} /> {t.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="hidden gap-1 border-b border-border md:flex">
@@ -612,7 +750,7 @@ export default function Admin() {
             const Icon = t.icon;
             return (
               <button key={t.key} onClick={() => { 
-                setTab(t.key); 
+                handleTabChange(t.key);
                 if (t.key === "orders") fetchOrders(orderFilter); 
                 if (t.key === "dashboard") { fetchOrders(); fetchStats(); }
                 if (t.key === "customers") fetchCustomers();
@@ -632,18 +770,26 @@ export default function Admin() {
       </section>
 
       <section className="container-luxe pb-24">
-        {/* ─── DASHBOARD ─── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {/* ─── DASHBOARD ─── */}
         {tab === "dashboard" && (
-          <div className="space-y-6 animate-fade-up">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard icon={DollarSign} label="Revenue" value={formatCurrency(displayRevenue)} detail={`${displayOrders} orders tracked`} tone="text-emerald-600" />
-              <MetricCard icon={ShoppingBag} label="Orders" value={displayOrders} detail={`${processingOrders} processing, ${shippedOrders} shipped`} tone="text-blue-600" />
-              <MetricCard icon={Users} label="Customers" value={displayCustomers} detail={`${topCustomers.length} high-value profiles`} tone="text-violet-600" />
-              <MetricCard icon={TrendingUp} label="Avg. Order" value={formatCurrency(displayAvgOrder)} detail={`${deliveredOrders} delivered orders`} tone="text-amber-600" />
-            </div>
+          <div className="space-y-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard icon={DollarSign} label="Revenue" value={formatCurrency(displayRevenue)} detail={`${displayOrders} orders tracked`} tone="text-emerald-600" index={0} />
+                <MetricCard icon={ShoppingBag} label="Orders" value={displayOrders} detail={`${processingOrders} processing, ${shippedOrders} shipped`} tone="text-blue-600" index={1} />
+                <MetricCard icon={Users} label="Customers" value={displayCustomers} detail={`${topCustomers.length} high-value profiles`} tone="text-violet-600" index={2} />
+                <MetricCard icon={TrendingUp} label="Avg. Order" value={formatCurrency(displayAvgOrder)} detail={`${deliveredOrders} delivered orders`} tone="text-amber-600" index={3} />
+              </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-              <Panel title="Revenue Trend" eyebrow="Last active order days" action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">Orders</button>}>
+              <Panel title="Revenue Trend" eyebrow="Last active order days" index={4} action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">Orders</button>}>
                 {revenueTrend.length === 0 ? (
                   <div className="grid h-[280px] place-items-center text-sm text-muted-foreground border border-dashed border-border">No revenue data yet.</div>
                 ) : (
@@ -668,7 +814,7 @@ export default function Admin() {
                 )}
               </Panel>
 
-              <Panel title="Order Mix" eyebrow="Status distribution">
+              <Panel title="Order Mix" eyebrow="Status distribution" index={5}>
                 {statusData.length === 0 ? (
                   <div className="grid h-[280px] place-items-center text-sm text-muted-foreground">No order status data.</div>
                 ) : (
@@ -700,7 +846,7 @@ export default function Admin() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-              <Panel title="Inventory by Category" eyebrow="Stock value and quantity">
+              <Panel title="Inventory by Category" eyebrow="Stock value and quantity" index={6}>
                 {categoryData.length === 0 ? (
                   <div className="grid h-[260px] place-items-center text-sm text-muted-foreground">No inventory data yet.</div>
                 ) : (
@@ -720,7 +866,7 @@ export default function Admin() {
                 )}
               </Panel>
 
-              <Panel title="Operations Queue" eyebrow="Action center">
+              <Panel title="Operations Queue" eyebrow="Action center" index={7}>
                 <div className="grid gap-3">
                   {[
                     { label: "Processing orders", value: processingOrders, icon: Clock, tone: "text-amber-600", action: () => { setOrderFilter("processing"); setTab("orders"); fetchOrders("processing"); } },
@@ -754,7 +900,7 @@ export default function Admin() {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-              <Panel title="Recent Orders" eyebrow="Customer activity" action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">View all</button>}>
+              <Panel title="Recent Orders" eyebrow="Customer activity" index={8} action={<button onClick={() => setTab("orders")} className="text-xs uppercase tracking-[0.14em] text-accent hover:underline">View all</button>}>
                 {recentOrders.length === 0 ? (
                   <div className="py-10 text-center text-sm text-muted-foreground">No orders yet.</div>
                 ) : (
@@ -795,7 +941,7 @@ export default function Admin() {
                 )}
               </Panel>
 
-              <Panel title="Low Stock Watchlist" eyebrow="Inventory attention">
+              <Panel title="Low Stock Watchlist" eyebrow="Inventory attention" index={9}>
                 {lowStockProducts.length === 0 ? (
                   <div className="py-10 text-center text-sm text-muted-foreground">No low stock products.</div>
                 ) : (
@@ -823,12 +969,12 @@ export default function Admin() {
 
         {/* ─── PRODUCTS ─── */}
         {tab === "products" && (
-          <div className="space-y-6 animate-fade-up">
+          <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <MetricCard icon={Package} label="Products" value={productList.length} detail={`${filteredProducts.length} matching search`} />
-              <MetricCard icon={Boxes} label="Inventory" value={formatCurrency(inventoryStats.value)} detail={`${inventoryStats.avg} avg. units in stock`} tone="text-blue-600" />
-              <MetricCard icon={AlertTriangle} label="Low Stock" value={lowStockProducts.length} detail="10 units or fewer" tone="text-red-600" />
-              <MetricCard icon={BarChart3} label="Categories" value={categoryData.length} detail="Active product groups" tone="text-amber-600" />
+              <MetricCard icon={Package} label="Products" value={productList.length} detail={`${filteredProducts.length} matching search`} index={0} />
+              <MetricCard icon={Boxes} label="Inventory" value={formatCurrency(inventoryStats.value)} detail={`${inventoryStats.avg} avg. units in stock`} tone="text-blue-600" index={1} />
+              <MetricCard icon={AlertTriangle} label="Low Stock" value={lowStockProducts.length} detail="10 units or fewer" tone="text-red-600" index={2} />
+              <MetricCard icon={BarChart3} label="Categories" value={categoryData.length} detail="Active product groups" tone="text-amber-600" index={3} />
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -885,25 +1031,12 @@ export default function Admin() {
 
         {/* ─── ORDERS ─── */}
         {tab === "orders" && (
-          <div className="space-y-6 animate-fade-up">
+          <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {[
-                { label: "Processing", value: processingOrders, icon: Clock, tone: "text-amber-600" },
-                { label: "Shipped", value: shippedOrders, icon: Truck, tone: "text-blue-600" },
-                { label: "Delivered", value: deliveredOrders, icon: CheckCircle, tone: "text-emerald-600" },
-                { label: "Visible value", value: formatCurrency(visibleOrders.reduce((sum, order) => sum + parseCurrency(order.total), 0)), icon: DollarSign, tone: "text-foreground" },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="border border-border p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <Icon className={`h-4 w-4 ${item.tone}`} strokeWidth={1.5} />
-                      <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{item.label}</span>
-                    </div>
-                    <div className="mt-3 font-display text-2xl">{item.value}</div>
-                  </div>
-                );
-              })}
+              <MetricCard icon={Clock} label="Processing" value={processingOrders} detail="Awaiting shipment" tone="text-amber-600" index={0} />
+              <MetricCard icon={Truck} label="Shipped" value={shippedOrders} detail="En route to customer" tone="text-blue-600" index={1} />
+              <MetricCard icon={CheckCircle} label="Delivered" value={deliveredOrders} detail="Completed deliveries" tone="text-emerald-600" index={2} />
+              <MetricCard icon={DollarSign} label="Visible Value" value={formatCurrency(visibleOrders.reduce((sum, order) => sum + parseCurrency(order.total), 0))} detail="Filtered total amount" index={3} />
             </div>
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -970,16 +1103,16 @@ export default function Admin() {
 
         {/* ─── CUSTOMERS ─── */}
         {tab === "customers" && (
-          <div className="space-y-6 animate-fade-up">
+          <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <MetricCard icon={Users} label="Customers" value={customers.length} detail="Registered accounts" />
-              <MetricCard icon={ShoppingBag} label="Orders" value={customerOrderCount} detail="Placed by customers" tone="text-blue-600" />
-              <MetricCard icon={DollarSign} label="Lifetime Value" value={formatCurrency(customerLifetimeValue)} detail="Tracked customer spend" tone="text-emerald-600" />
-              <MetricCard icon={TrendingUp} label="Avg. Customer" value={formatCurrency(customers.length ? customerLifetimeValue / customers.length : 0)} detail="Average total spend" tone="text-amber-600" />
+              <MetricCard icon={Users} label="Customers" value={customers.length} detail="Registered accounts" index={0} />
+              <MetricCard icon={ShoppingBag} label="Orders" value={customerOrderCount} detail="Placed by customers" tone="text-blue-600" index={1} />
+              <MetricCard icon={DollarSign} label="Lifetime Value" value={formatCurrency(customerLifetimeValue)} detail="Tracked customer spend" tone="text-emerald-600" index={2} />
+              <MetricCard icon={TrendingUp} label="Avg. Customer" value={formatCurrency(customers.length ? customerLifetimeValue / customers.length : 0)} detail="Average total spend" tone="text-amber-600" index={3} />
             </div>
 
             {topCustomers.length > 0 && (
-              <Panel title="Top Customers" eyebrow="By total spend">
+              <Panel title="Top Customers" eyebrow="By total spend" index={4}>
                 <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-5">
                   {topCustomers.map((customer) => (
                     <div key={customer.email} className="border-b border-border pb-3">
@@ -1033,12 +1166,12 @@ export default function Admin() {
 
         {/* ─── FEEDBACK ─── */}
         {tab === "feedback" && (
-          <div className="space-y-8 animate-fade-up">
+          <div className="space-y-12">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <MetricCard icon={Activity} label="Open Items" value={unresolvedFeedback} detail="Reviews and questions" tone="text-violet-600" />
-              <MetricCard icon={TrendingUp} label="Reviews" value={feedback.reviews.length} detail="Waiting for replies" tone="text-amber-600" />
-              <MetricCard icon={Users} label="Questions" value={feedback.questions.length} detail="Customer questions" tone="text-blue-600" />
-              <MetricCard icon={CheckCircle} label="Resolved" value={unresolvedFeedback === 0 ? "Clear" : "Pending"} detail="Current queue state" tone={unresolvedFeedback === 0 ? "text-emerald-600" : "text-red-600"} />
+              <MetricCard icon={Activity} label="Open Items" value={unresolvedFeedback} detail="Reviews and questions" tone="text-violet-600" index={0} />
+              <MetricCard icon={TrendingUp} label="Reviews" value={feedback.reviews.length} detail="Waiting for replies" tone="text-amber-600" index={1} />
+              <MetricCard icon={Users} label="Questions" value={feedback.questions.length} detail="Customer questions" tone="text-blue-600" index={2} />
+              <MetricCard icon={CheckCircle} label="Resolved" value={unresolvedFeedback === 0 ? "Clear" : "Pending"} detail="Current queue state" tone={unresolvedFeedback === 0 ? "text-emerald-600" : "text-red-600"} index={3} />
             </div>
 
             <div>
@@ -1048,7 +1181,7 @@ export default function Admin() {
               ) : (
                 <div className="grid gap-4">
                   {feedback.reviews.map((r) => (
-                    <div key={`rev-${r.id}`} className="p-5 border border-border">
+                    <div id={`feedback-review-${r.id}`} key={`rev-${r.id}`} className="p-5 border border-border transition-all duration-500">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <Link to={`/product/${r.productSlug}`} className="text-xs uppercase tracking-wider text-accent link-underline mb-1 inline-block">{r.productName}</Link>
@@ -1060,7 +1193,21 @@ export default function Admin() {
                         </div>
                       </div>
                       <div className="text-sm text-foreground/80 mb-3">{r.text}</div>
-                      <Link to={`/product/${r.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Reply</Link>
+                      <div className="flex gap-4 items-center">
+                        <Link to={`/product/${r.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Reply</Link>
+                        <button 
+                          onClick={() => setEditReviewTarget(r)}
+                          className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => setDeleteTargetReview(r)}
+                          className="text-[10px] uppercase tracking-widest text-destructive hover:opacity-80"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1074,7 +1221,7 @@ export default function Admin() {
               ) : (
                 <div className="grid gap-4">
                   {feedback.questions.map((q) => (
-                    <div key={`q-${q.id}`} className="p-5 border border-border">
+                    <div id={`feedback-question-${q.id}`} key={`q-${q.id}`} className="p-5 border border-border transition-all duration-500">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <Link to={`/product/${q.productSlug}`} className="text-xs uppercase tracking-wider text-accent link-underline mb-1 inline-block">{q.productName}</Link>
@@ -1082,10 +1229,24 @@ export default function Admin() {
                         </div>
                         <div className="text-xs text-muted-foreground text-right">
                           <div>{q.userName}</div>
-                          <div>{new Date(q.date).toLocaleDateString()}</div>
+                          <div>{q.date ? new Date(q.date).toLocaleDateString() : "N/A"}</div>
                         </div>
                       </div>
-                      <Link to={`/product/${q.productSlug}`} className="mt-2 text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Answer</Link>
+                      <div className="flex gap-4 items-center mt-2">
+                        <Link to={`/product/${q.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Answer</Link>
+                        <button 
+                          onClick={() => setEditQuestionTarget(q)}
+                          className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => setDeleteTargetQuestion(q)}
+                          className="text-[10px] uppercase tracking-widest text-destructive hover:opacity-80"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1096,7 +1257,7 @@ export default function Admin() {
 
         {/* ─── NOTIFICATIONS ─── */}
         {tab === "notifications" && (
-          <div className="space-y-6 animate-fade-up">
+          <div className="space-y-6">
             <Panel title="System Notifications" eyebrow="User activity alerts">
               {notifications.length === 0 ? (
                 <div className="py-16 text-center text-sm text-muted-foreground border border-dashed border-border">No recent notifications.</div>
@@ -1119,14 +1280,38 @@ export default function Admin() {
                           </td>
                           <td className="py-3 font-medium">{n.title}</td>
                           <td className="py-3 text-muted-foreground max-w-xs truncate">{n.message}</td>
-                          <td className="py-3 text-right text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString()}</td>
+                          <td className="py-3 text-right text-xs text-muted-foreground">
+                            {n.created_at ? new Date(n.created_at).toLocaleString() : "N/A"}
+                          </td>
                           <td className="py-3 text-right">
                             {n.link && (
                               <button 
-                                onClick={() => {
-                                  if (n.link === "/orders") setTab("orders");
-                                  else if (n.link === "/admin") setTab("dashboard");
-                                  else window.location.href = n.link;
+                                onClick={async () => {
+                                  if (!n.link) return;
+                                  
+                                  // Mark as read in background
+                                  if (!n.is_read) {
+                                    notificationsApi.markRead(n.id)
+                                      .then(() => fetchNotifications())
+                                      .catch(err => console.error("Mark read failed:", err));
+                                  }
+                                  
+                                  // Parse our internal admin links: /admin?tab=...&id=...
+                                  if (n.link.startsWith("/admin")) {
+                                    const url = new URL(n.link, window.location.origin);
+                                    const targetTab = url.searchParams.get("tab") as Tab;
+                                    const id = url.searchParams.get("id");
+                                    
+                                    if (targetTab) {
+                                      handleTabChange(targetTab);
+                                      if (targetTab === "orders" && id) setOrderSearch(id);
+                                      // If feedback, we could also filter/scroll
+                                    }
+                                  } else if (n.link === "/orders") {
+                                    handleTabChange("orders");
+                                  } else {
+                                    window.location.href = n.link;
+                                  }
                                 }}
                                 className="text-xs text-accent font-medium hover:underline"
                               >
@@ -1146,7 +1331,7 @@ export default function Admin() {
 
         {/* ─── COUPONS ─── */}
         {tab === "coupons" && (
-          <div className="space-y-6 animate-fade-up">
+          <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="eyebrow">Active Discount Codes</h2>
               <button onClick={handleCreateCoupon} className="text-xs bg-foreground text-background px-4 py-2 uppercase tracking-wider">New Coupon</button>
@@ -1161,7 +1346,21 @@ export default function Admin() {
                     </span>
                   </div>
                   <div className="text-3xl font-display mb-1">{c.discount_pct}% OFF</div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-widest">Discount rate</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Discount rate</div>
+                  {c.description && (
+                    <div className="text-xs border-t border-border/50 pt-3 italic text-foreground/70 mb-4">
+                      "{c.description}"
+                    </div>
+                  )}
+                  <div className="flex justify-end border-t border-border/50 pt-4">
+                    <button 
+                      onClick={() => setDeleteTargetCoupon(c)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      title="Delete Coupon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
               {coupons.length === 0 && (
@@ -1170,6 +1369,8 @@ export default function Admin() {
             </div>
           </div>
         )}
+          </motion.div>
+        </AnimatePresence>
       </section>
 
       {/* ─── Modals ─── */}
@@ -1203,6 +1404,177 @@ export default function Admin() {
           onClose={() => setDeleteTarget(null)}
         />
       )}
+      {deleteTargetCoupon && (
+        <ConfirmModal
+          title="Delete Coupon"
+          message={`Are you sure you want to delete the "${deleteTargetCoupon.code}" coupon?`}
+          confirmLabel="Delete Coupon"
+          onConfirm={() => handleDeleteCoupon(deleteTargetCoupon.id)}
+          onClose={() => setDeleteTargetCoupon(null)}
+        />
+      )}
+      {deleteTargetReview && (
+        <ConfirmModal
+          title="Delete Review"
+          message="Are you sure you want to delete this customer review?"
+          confirmLabel="Delete Review"
+          onConfirm={async () => {
+            await reviewsApi.delete(deleteTargetReview.id);
+            toast.success("Review deleted");
+            setDeleteTargetReview(null);
+            fetchFeedback();
+          }}
+          onClose={() => setDeleteTargetReview(null)}
+        />
+      )}
+      {deleteTargetQuestion && (
+        <ConfirmModal
+          title="Delete Question"
+          message="Are you sure you want to delete this customer question?"
+          confirmLabel="Delete Question"
+          onConfirm={async () => {
+            await questionsApi.delete(deleteTargetQuestion.id);
+            toast.success("Question deleted");
+            setDeleteTargetQuestion(null);
+            fetchFeedback();
+          }}
+          onClose={() => setDeleteTargetQuestion(null)}
+        />
+      )}
+      {editReviewTarget && (
+        <PromptModal
+          title="Edit Review"
+          label="Review Content"
+          defaultValue={editReviewTarget.text}
+          onConfirm={async (text) => {
+            await reviewsApi.edit(editReviewTarget.id, { rating: editReviewTarget.rating, title: editReviewTarget.title, body: text });
+            toast.success("Review updated");
+            setEditReviewTarget(null);
+            fetchFeedback();
+          }}
+          onClose={() => setEditReviewTarget(null)}
+        />
+      )}
+      {editQuestionTarget && (
+        <PromptModal
+          title="Edit Question"
+          label="Question Content"
+          defaultValue={editQuestionTarget.text}
+          onConfirm={async (text) => {
+            await questionsApi.edit(editQuestionTarget.id, { text });
+            toast.success("Question updated");
+            setEditQuestionTarget(null);
+            fetchFeedback();
+          }}
+          onClose={() => setEditQuestionTarget(null)}
+        />
+      )}
+      {showAddCoupon && (
+        <CouponModal
+          onClose={() => setShowAddCoupon(false)}
+          onSave={handleSaveCoupon}
+        />
+      )}
     </AdminLayout>
+  );
+}
+
+function CouponModal({ onClose, onSave }: { onClose: () => void; onSave: (data: any) => Promise<void> }) {
+  const [code, setCode] = useState("");
+  const [pct, setPct] = useState("10");
+  const [description, setDescription] = useState("");
+  const [terms, setTerms] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code || !pct) return;
+    setLoading(true);
+    try {
+      await onSave({ 
+        code, 
+        discount_pct: Number(pct),
+        description: description || undefined,
+        terms: terms || undefined
+      });
+    } catch {
+      // Error handled in parent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
+      <div className="bg-background border border-border w-full max-w-lg p-8 shadow-2xl animate-scale-in">
+        <h3 className="font-display text-2xl mb-6">Create New Coupon</h3>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Coupon Code</label>
+              <input
+                required
+                type="text"
+                placeholder="e.g. SUMMER20"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="w-full bg-transparent border-b border-border focus:border-foreground py-2 text-sm focus:outline-none transition-colors"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Discount (%)</label>
+              <input
+                required
+                type="number"
+                min="1"
+                max="100"
+                value={pct}
+                onChange={(e) => setPct(e.target.value)}
+                className="w-full bg-transparent border-b border-border focus:border-foreground py-2 text-sm focus:outline-none transition-colors"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Short Description</label>
+            <input
+              type="text"
+              placeholder="e.g. 10% off your first order"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-transparent border-b border-border focus:border-foreground py-2 text-sm focus:outline-none transition-colors"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Terms & Conditions</label>
+            <textarea
+              placeholder="e.g. Valid on orders over Rs 5000. Not valid with other offers."
+              rows={3}
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+              className="w-full bg-transparent border border-border focus:border-foreground p-3 text-sm focus:outline-none transition-colors resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border border-border text-[11px] uppercase tracking-widest hover:border-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-foreground text-background text-[11px] uppercase tracking-widest hover:bg-accent transition-colors disabled:opacity-50"
+            >
+              {loading ? "Creating..." : "Create Coupon"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

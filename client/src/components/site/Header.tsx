@@ -1,10 +1,12 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X } from "lucide-react";
+import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { products } from "@/data/products";
-import { notificationsApi } from "@/lib/api";
+import { notificationsApi, resolveAssetUrl } from "@/lib/api";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 
 const nav = [
   { to: "/shop", label: "Shop All" },
@@ -12,304 +14,237 @@ const nav = [
   { to: "/shop?category=backpacks", label: "Backpacks" },
   { to: "/shop?category=travel", label: "Travel" },
   { to: "/shop?category=office", label: "Office" },
+  { to: "/offers", label: "Offers" },
   { to: "/journal", label: "Journal" },
 ];
 
 export default function Header() {
   const { state, totals } = useStore();
   const { state: authState, isAdmin, logout } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [q, setQ] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const navigate = useNavigate();
+  const headerRef = useRef(null);
 
-  useEffect(() => {
-    const fetchNotifications = () => {
-      if (authState.isAuthenticated) {
-        notificationsApi.get().then(d => setNotifications(d.notifications)).catch(() => {});
-      } else {
-        setNotifications([]);
-      }
-    };
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // Poll every minute
-    return () => clearInterval(interval);
-  }, [authState.isAuthenticated]);
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  const handleMarkRead = async (id: number) => {
-    try {
-      await notificationsApi.markRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
-    } catch {}
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await notificationsApi.markAllRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
-    } catch {}
-  };
-
-  const handleDeleteNotification = async (id: number) => {
-    try {
-      await notificationsApi.delete(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch {}
-  };
-
-  const handleClearAllNotifications = async () => {
-    try {
-      await notificationsApi.clearAll();
-      setNotifications([]);
-    } catch {}
-  };
+  const { scrollY } = useScroll();
+  const headerHeight = useTransform(scrollY, [0, 100], ["5rem", "4rem"]);
+  const headerBg = useTransform(scrollY, [0, 100], ["rgba(var(--background-rgb), 0)", "rgba(var(--background-rgb), 0.8)"]);
+  const headerBlur = useTransform(scrollY, [0, 100], ["blur(0px)", "blur(20px)"]);
 
   const suggestions = q
     ? products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 5)
     : [];
-  const iconButtonClass = "flex h-9 w-9 shrink-0 items-center justify-center hover:text-accent transition-colors max-[360px]:h-8 max-[360px]:w-8";
+  
+  const iconButtonClass = "flex h-10 w-10 shrink-0 items-center justify-center hover:text-accent transition-all duration-300 rounded-full hover:bg-secondary/20";
   const canUseWishlist = authState.isAuthenticated && !isAdmin;
 
   return (
-    <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md hairline">
-      <div className="container-luxe flex items-center justify-between gap-2 h-14 px-3 sm:h-16 sm:px-6 md:h-20 md:px-10 lg:px-14">
-        <Link to="/" className="font-display text-lg sm:text-xl md:text-2xl tracking-tight shrink-0 max-[360px]:text-base">
-          MAISON<span className="text-accent">.</span>
-        </Link>
-        <nav className="hidden lg:flex items-center gap-8">
-          {nav.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={({ isActive }) =>
-                `text-[13px] uppercase tracking-[0.18em] link-underline ${
-                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                }`
-              }
-            >
-              {n.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="flex shrink-0 items-center justify-end gap-0.5 sm:gap-1.5 md:gap-3">
+    <motion.header 
+      ref={headerRef}
+      style={{ height: headerHeight, backgroundColor: headerBg, backdropFilter: headerBlur }}
+      className="sticky top-0 z-50 transition-all duration-500 flex items-center border-b border-border/10"
+    >
+      <div className="container-luxe flex items-center justify-between w-full">
+        {/* LEFT: Mobile Menu & Search */}
+        <div className="flex-1 flex justify-start items-center gap-2">
+          <button 
+            className="lg:hidden p-2 hover:bg-secondary/20 rounded-full transition-colors"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <button
             aria-label="Search"
-            onClick={() => setOpen((v) => !v)}
-            className={iconButtonClass}
+            onClick={() => setIsSearchOpen(true)}
+            className="hidden sm:flex h-10 w-10 items-center justify-center hover:bg-secondary/20 rounded-full transition-colors"
           >
             <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
           </button>
+        </div>
 
-          {/* Notifications button */}
-          {authState.isAuthenticated && (
-            <div className="relative">
-              <button
-                aria-label="Notifications"
-                onClick={() => {
-                  setShowNotifications((v) => !v);
-                  setShowUserMenu(false);
-                }}
-                className={`${iconButtonClass} relative`}
-              >
-                <Bell className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 h-3 w-3 rounded-full bg-accent text-[8px] text-background flex items-center justify-center font-bold">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
+        {/* CENTER: Logo */}
+        <div className="flex-[2] flex justify-center">
+          <Link to="/" className="font-display text-2xl sm:text-3xl tracking-tighter relative group overflow-hidden py-1">
+            <span className="inline-block transition-transform duration-700 group-hover:-translate-y-full">MAISON</span>
+            <span className="absolute left-0 top-full inline-block transition-transform duration-700 group-hover:-translate-y-full text-accent">MAISON</span>
+          </Link>
+        </div>
 
-              {showNotifications && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className="fixed left-3 right-3 top-16 bg-background border border-border shadow-lift z-50 animate-fade-in max-h-[min(24rem,calc(100vh-5rem))] overflow-y-auto sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
-                    <div className="px-4 py-3 border-b border-border flex justify-between items-center sticky top-0 bg-background/95 backdrop-blur z-10">
-                      <div className="text-sm font-medium">Notifications</div>
-                      <div className="flex gap-3">
-                        {unreadCount > 0 && (
-                          <button onClick={handleMarkAllRead} className="text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground">
-                            Mark read
-                          </button>
-                        )}
-                        {notifications.length > 0 && (
-                          <button onClick={handleClearAllNotifications} className="text-[10px] uppercase tracking-wider text-destructive hover:opacity-80">
-                            Clear all
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="py-2">
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">No new notifications</div>
-                      ) : (
-                        notifications.map(n => (
-                          <div key={n.id} className={`px-4 py-3 border-b border-border/40 last:border-0 hover:bg-secondary/30 transition-colors ${!n.is_read ? 'bg-secondary/10' : ''}`}>
-                            <div className="flex justify-between items-start mb-1">
-                              <div className="text-xs font-semibold">{n.title}</div>
-                              <div className="flex items-center gap-2">
-                                <div className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString()}</div>
-                                <button onClick={() => handleDeleteNotification(n.id)} className="text-muted-foreground hover:text-destructive transition-colors">
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="text-xs text-foreground/80 mb-2">{n.message}</div>
-                            <div className="flex justify-between items-center">
-                              {n.link ? (
-                                <Link 
-                                  to={n.link} 
-                                  onClick={() => { setShowNotifications(false); if (!n.is_read) handleMarkRead(n.id); }}
-                                  className="text-[10px] uppercase tracking-wider text-accent link-underline"
-                                >
-                                  View
-                                </Link>
-                              ) : <span />}
-                              {!n.is_read && (
-                                <button onClick={() => handleMarkRead(n.id)} className="text-[10px] text-muted-foreground hover:text-foreground">
-                                  Mark read
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+        {/* RIGHT: Utilities */}
+        <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2">
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
 
-          {/* User / Auth button */}
           <div className="relative">
             <button
-              aria-label="Account"
               onClick={() => {
-                setShowUserMenu((v) => !v);
-                setShowNotifications(false);
+                if (!authState.isAuthenticated) navigate("/login");
+                else setShowUserMenu(!showUserMenu);
               }}
               className={iconButtonClass}
             >
               <User className="h-[18px] w-[18px]" strokeWidth={1.5} />
-              {authState.isAuthenticated && (
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent" />
-              )}
             </button>
-
-            {showUserMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="fixed left-3 right-3 top-16 bg-background border border-border shadow-lift z-50 animate-fade-in sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56">
-                  {authState.isAuthenticated ? (
-                    <div className="py-2">
-                      <div className="px-4 py-2 border-b border-border">
-                        <div className="text-sm font-medium">{authState.user?.firstName} {authState.user?.lastName}</div>
-                        <div className="text-xs text-muted-foreground">{authState.user?.email}</div>
-                      </div>
-                      <Link to="/profile" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors">
-                        <User className="h-4 w-4" strokeWidth={1.5} /> Profile
-                      </Link>
-                      <Link to="/orders" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors">
-                        <ShoppingBag className="h-4 w-4" strokeWidth={1.5} /> Orders
-                      </Link>
-                      {isAdmin && (
-                        <Link to="/admin" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-accent">
-                          <Shield className="h-4 w-4" strokeWidth={1.5} /> Admin Panel
-                        </Link>
-                      )}
-                      <div className="border-t border-border mt-1">
-                        <button
-                          onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-destructive w-full text-left"
-                        >
-                          <LogOut className="h-4 w-4" strokeWidth={1.5} /> Sign Out
-                        </button>
-                      </div>
-                    </div>
+            <AnimatePresence>
+              {showUserMenu && authState.isAuthenticated && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-56 glass shadow-lift p-2 origin-top-right z-50 overflow-hidden"
+                >
+                  <div className="py-2 px-4 border-b border-border/50 mb-1">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
+                    <div className="text-sm font-medium truncate">{authState.user?.email}</div>
+                  </div>
+                  {isAdmin ? (
+                    <Link to="/admin" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary/30 transition-colors">
+                      <Shield className="h-4 w-4" /> Admin Panel
+                    </Link>
                   ) : (
-                    <div className="py-2">
-                      <Link to="/login" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors">
-                        Sign In
-                      </Link>
-                      <Link to="/signup" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors">
-                        Create Account
-                      </Link>
-                    </div>
+                    <Link to="/profile" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary/30 transition-colors">
+                      <User className="h-4 w-4" /> My Profile
+                    </Link>
                   )}
-                </div>
-              </>
-            )}
+                  <button 
+                    onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }} 
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" /> Sign Out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {canUseWishlist && (
+          {canUseWishlist ? (
             <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
               <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
-              {state.wishlist.length > 0 && (
+              {state.wishlist.length > 0 ? (
                 <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
                   {state.wishlist.length}
                 </span>
-              )}
+              ) : null}
             </Link>
-          )}
+          ) : null}
           <Link to="/cart" aria-label="Cart" className={`${iconButtonClass} relative`}>
             <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
-            {totals.count > 0 && (
+            {totals.count > 0 ? (
               <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-foreground text-background text-[10px] flex items-center justify-center font-medium">
                 {totals.count}
               </span>
-            )}
+            ) : null}
           </Link>
         </div>
       </div>
 
-      {open && (
-        <div className="hairline animate-fade-in">
-          <div className="container-luxe py-6">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setOpen(false);
-                navigate(`/shop?q=${encodeURIComponent(q)}`);
-              }}
-              className="flex items-center gap-3 border-b border-border pb-3"
-            >
-              <Search className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
-              <input
-                autoFocus
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search bags, materials, collections..."
-                className="w-full bg-transparent font-display text-2xl md:text-3xl placeholder:text-muted-foreground/60 focus:outline-none"
-              />
-            </form>
-            {suggestions.length > 0 && (
-              <ul className="mt-4 space-y-1">
-                {suggestions.map((p) => (
-                  <li key={p.id}>
+      {/* SEARCH OVERLAY */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-0 left-0 w-full bg-background border-b border-border shadow-2xl z-50"
+          >
+            <div className="container-luxe py-8">
+              <div className="flex items-center gap-6">
+                <Search className="h-6 w-6 text-muted-foreground" />
+                <input
+                  autoFocus
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search the collection..."
+                  className="flex-1 bg-transparent font-display text-3xl md:text-5xl outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setIsSearchOpen(false);
+                      navigate(`/shop?q=${encodeURIComponent(q)}`);
+                    }
+                  }}
+                />
+                <button onClick={() => setIsSearchOpen(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {suggestions.length > 0 && (
+                <div className="mt-12 grid md:grid-cols-2 gap-8">
+                  {suggestions.map((p) => (
                     <Link
+                      key={p.id}
                       to={`/product/${p.slug}`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-4 py-2 group"
+                      onClick={() => setIsSearchOpen(false)}
+                      className="flex items-center gap-6 group p-2 hover:bg-secondary/30 transition-colors"
                     >
-                      <img src={p.colors[0].image} alt="" className="w-12 h-12 object-cover bg-muted" />
-                      <div className="flex-1">
-                        <div className="text-sm group-hover:text-accent transition-colors">{p.name}</div>
-                        <div className="text-xs text-muted-foreground capitalize">{p.category}</div>
+                      <div className="h-20 w-16 bg-secondary overflow-hidden">
+                        <img src={resolveAssetUrl(p.colors?.[0]?.image)} alt="" className="w-full h-full object-cover" />
                       </div>
-                      <div className="text-sm">Rs {p.price}</div>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-1">{p.category}</div>
+                        <div className="font-display text-xl group-hover:text-accent transition-colors">{p.name}</div>
+                      </div>
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
-    </header>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MOBILE MENU */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 bg-background z-[100] lg:hidden flex flex-col"
+          >
+            <div className="p-6 flex items-center justify-between border-b border-border">
+              <div className="font-display text-2xl tracking-tighter">MAISON</div>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-secondary rounded-full">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-8 space-y-8">
+              {nav.map((item, i) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.1, duration: 0.8 }}
+                >
+                  <Link
+                    to={item.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block font-display text-4xl hover:text-accent transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                </motion.div>
+              ))}
+            </nav>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="p-8 border-t border-border flex items-center justify-between"
+            >
+              <ThemeToggle />
+              <div className="flex gap-6">
+                <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest">Story</Link>
+                <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest">Contact</Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.header>
   );
 }

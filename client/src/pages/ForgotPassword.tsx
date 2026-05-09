@@ -178,7 +178,7 @@ export default function ForgotPassword() {
                       type="tel"
                       required
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                       placeholder="+977 98XXXXXXXX"
                       className="mt-2 w-full border-b border-border bg-transparent py-3 text-base transition-colors focus:border-foreground focus:outline-none"
                     />
@@ -211,6 +211,7 @@ export default function ForgotPassword() {
                           required
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
+                          autoComplete="new-password"
                           placeholder="Password"
                           className="mt-2 w-full border-b border-border bg-transparent py-3 text-base transition-colors focus:border-foreground focus:outline-none"
                         />
@@ -235,6 +236,18 @@ export default function ForgotPassword() {
                   <SubmitButton loading={loading} label={phoneCodeSent ? "Verify & Reset" : "Send Code"} />
                 </form>
               )}
+
+              <div className="pt-6 flex justify-center">
+                <a 
+                  href="https://wa.me/9779800000000"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 fill-emerald-600/10" strokeWidth={2} />
+                  Reset help? Chat on WhatsApp
+                </a>
+              </div>
 
               <div id="reset-recaptcha" />
             </>

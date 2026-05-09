@@ -126,6 +126,8 @@ type AuthCtx = {
   googleLogin: () => AuthResult;
   sendPhoneLoginCode: (phone: string, recaptchaContainerId: string) => AuthResult;
   confirmPhoneLogin: (code: string) => AuthResult;
+  sendPhoneSignupCode: (phone: string, profile: any, recaptchaContainerId: string) => AuthResult;
+  confirmPhoneSignup: (code: string) => AuthResult;
   signup: (data: { 
     email: string; 
     password: string; 
@@ -234,10 +236,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       socket.on("connect", () => {
         console.log("[Socket] Connected to real-time server");
+        socket?.emit("join_user", user.id);
         if (user.role === "admin") {
           socket?.emit("join_admin");
-        } else {
-          socket?.emit("join_user", user.id);
         }
       });
 
@@ -274,7 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile?: { firstName?: string; lastName?: string; phone?: string }
   ) => {
     const { user, token } = await exchangeFirebaseUserWithSocket(profile);
-    if (user.emailVerified) {
+    const isPhoneUser = !user.email && !!user.phone;
+    if (user.emailVerified || isPhoneUser) {
       setToken(token);
     } else {
       setToken(null);
@@ -405,6 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
         return { success: true };
       } catch (err: unknown) {
+        console.error("Firebase Phone Auth Error:", err);
         return { success: false, error: getErrorMessage(err, "Could not send verification code") };
       }
     },
@@ -415,8 +418,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const result = await phoneLoginConfirmation.confirm(code);
-        await finishFirebaseLogin({ phone: result.user.phoneNumber || undefined });
+        // If we have signup data in buffer, use it
+        const profile = signupDataBuffer || { phone: result.user.phoneNumber || undefined };
+        await finishFirebaseLogin(profile);
         phoneLoginConfirmation = null;
+        signupDataBuffer = null;
+        return { success: true };
+      } catch (err: unknown) {
+        return { success: false, error: getErrorMessage(err, "Invalid verification code") };
+      }
+    },
+    sendPhoneSignupCode: async (phone, profile, recaptchaContainerId) => {
+      if (!isFirebaseConfigured) return authNotConfigured();
+      if (!isValidNepalPhone(phone)) {
+        return { success: false, error: "Enter a valid Nepal mobile number." };
+      }
+
+      try {
+        signupDataBuffer = profile;
+        const verifier = createRecaptchaVerifier(recaptchaContainerId);
+        phoneLoginConfirmation = await signInWithPhoneNumber(
+          getConfiguredFirebaseAuth(),
+          formatNepalPhone(phone),
+          verifier
+        );
+        return { success: true };
+      } catch (err: unknown) {
+        console.error("Firebase Phone Signup Error:", err);
+        return { success: false, error: getErrorMessage(err, "Could not send verification code") };
+      }
+    },
+    confirmPhoneSignup: async (code) => {
+      if (!phoneLoginConfirmation) {
+        return { success: false, error: "Request a verification code first." };
+      }
+
+      try {
+        const result = await phoneLoginConfirmation.confirm(code);
+        await finishFirebaseLogin({ 
+          ...signupDataBuffer,
+          phone: result.user.phoneNumber || undefined 
+        });
+        phoneLoginConfirmation = null;
+        signupDataBuffer = null;
         return { success: true };
       } catch (err: unknown) {
         return { success: false, error: getErrorMessage(err, "Invalid verification code") };

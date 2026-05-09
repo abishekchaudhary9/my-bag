@@ -124,7 +124,7 @@ async function createReview(userId, productId, { rating, title, body }) {
         admin.id,
         "New Product Review",
         `A customer left a review for the ${productInfo[0].name}.`,
-        `/product/${productInfo[0].slug}#review-${reviewId}`
+        `/admin?tab=feedback&type=review&id=${reviewId}`
       );
     }
   }
@@ -170,18 +170,23 @@ async function replyToReview(user, reviewId, reply) {
   return { message: "Reply added successfully." };
 }
 
-async function updateReview(userId, reviewId, { rating, title, body }) {
+async function updateReview(user, reviewId, { rating, title, body }) {
   if (!rating || !title || !body) {
     throw createHttpError(400, "Rating, title, and review text are required.");
   }
 
   const [review] = await pool.query(
-    "SELECT * FROM product_reviews WHERE id = ? AND user_id = ?",
-    [reviewId, userId]
+    "SELECT * FROM product_reviews WHERE id = ?",
+    [reviewId]
   );
 
   if (review.length === 0) {
-    throw createHttpError(403, "Unauthorized or review not found.");
+    throw createHttpError(404, "Review not found.");
+  }
+
+  // Allow admin OR owner
+  if (user.role !== "admin" && review[0].user_id !== user.id) {
+    throw createHttpError(403, "Unauthorized.");
   }
 
   await pool.query(
@@ -193,14 +198,19 @@ async function updateReview(userId, reviewId, { rating, title, body }) {
   return { message: "Review updated successfully." };
 }
 
-async function deleteReview(userId, reviewId) {
+async function deleteReview(user, reviewId) {
   const [review] = await pool.query(
-    "SELECT * FROM product_reviews WHERE id = ? AND user_id = ?",
-    [reviewId, userId]
+    "SELECT * FROM product_reviews WHERE id = ?",
+    [reviewId]
   );
 
   if (review.length === 0) {
-    throw createHttpError(403, "Unauthorized or review not found.");
+    throw createHttpError(404, "Review not found.");
+  }
+
+  // Allow admin OR owner
+  if (user.role !== "admin" && review[0].user_id !== user.id) {
+    throw createHttpError(403, "Unauthorized.");
   }
 
   await pool.query("DELETE FROM product_reviews WHERE id = ?", [reviewId]);

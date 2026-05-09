@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, RefreshCw, ShieldCheck, MessageSquare } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -27,7 +27,8 @@ export default function Verify() {
     }
 
     setLoading(true);
-    const result = await verifyOtp(state.user.email, code);
+    const identifier = state.user.phone || state.user.email;
+    const result = await verifyOtp(identifier, code);
     setLoading(false);
 
     if (result.success) {
@@ -39,9 +40,10 @@ export default function Verify() {
   };
 
   const handleResend = async () => {
-    if (!state.user?.email) return;
+    const identifier = state.user?.phone || state.user?.email;
+    if (!identifier) return;
     setResending(true);
-    const result = await sendOtp(state.user.email);
+    const result = await sendOtp(identifier);
     setResending(false);
     if (result.success) {
       toast.success("New code sent!");
@@ -71,9 +73,9 @@ export default function Verify() {
               <ShieldCheck className="h-8 w-8" strokeWidth={1.5} />
             </div>
             <div className="eyebrow mb-4">Complete Your Account</div>
-            <h1 className="font-display text-4xl md:text-5xl">Verify Your Email</h1>
+            <h1 className="font-display text-4xl md:text-5xl">Verify Your Identity</h1>
             <p className="mt-4 text-muted-foreground text-sm">
-              We've sent a 6-digit verification code to <span className="text-foreground font-medium">{state.user.email}</span>.
+              We've sent a 6-digit verification code to <span className="text-foreground font-medium">{state.user.phone || state.user.email}</span>.
               Enter it below to unlock your account features.
             </p>
           </div>
@@ -100,14 +102,26 @@ export default function Verify() {
                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Verify Account"}
               </button>
 
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={resending}
-                className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
-              >
-                {resending ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Didn't receive code? Resend"}
-              </button>
+              <div className="flex flex-col items-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="py-2 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                >
+                  {resending ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Didn't receive code? Resend"}
+                </button>
+
+                <a 
+                  href="https://wa.me/9779800000000"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 fill-emerald-600/10" strokeWidth={2} />
+                  Need help? Chat on WhatsApp
+                </a>
+              </div>
             </div>
           </form>
 

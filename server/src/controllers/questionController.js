@@ -16,12 +16,12 @@ async function answerQuestion(req, res) {
 }
 
 async function updateQuestion(req, res) {
-  const result = await questionService.updateQuestion(req.user.id, req.params.questionId, req.body);
+  const result = await questionService.updateQuestion(req.user, req.params.questionId, req.body);
   res.json(result);
 }
 
 async function deleteQuestion(req, res) {
-  const result = await questionService.deleteQuestion(req.user.id, req.params.questionId);
+  const result = await questionService.deleteQuestion(req.user, req.params.questionId);
   res.json(result);
 }
 

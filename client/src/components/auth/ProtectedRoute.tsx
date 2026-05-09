@@ -17,7 +17,8 @@ export function ProtectedRoute({ children, adminOnly = false }: { children: Reac
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!state.user?.emailVerified && location.pathname !== "/verify") {
+  const isPhoneUser = !state.user?.email && !!state.user?.phone;
+  if (!state.user?.emailVerified && !isPhoneUser && location.pathname !== "/verify") {
     return <Navigate to="/verify" replace />;
   }
 

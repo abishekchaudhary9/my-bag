@@ -151,6 +151,8 @@ CREATE TABLE IF NOT EXISTS coupons (
   id INT AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(50) NOT NULL UNIQUE,
   discount_pct INT NOT NULL,
+  description VARCHAR(255),
+  terms TEXT,
   active TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -279,9 +281,8 @@ async function init() {
 
     console.log("Seeded 6 products with colors, sizes, and details.");
 
-    // Seed coupons
-    await conn.query(`INSERT IGNORE INTO ${DB}.coupons (code, discount_pct) VALUES ('WELCOME10', 10), ('MAISON15', 15), ('ATELIER20', 20)`);
-    console.log("Seeded coupons.");
+    // Seed coupons (Removed dummy coupons)
+    console.log("Skipping coupon seeding.");
 
     console.log("\nDatabase initialized successfully!");
     console.log(`   Database: ${env.database.name}`);

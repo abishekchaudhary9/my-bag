@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, ReactNode, useCallback } from "react";
 import { Product } from "@/data/products";
 import { useAuth } from "@/context/AuthContext";
-import { resolveAssetUrl, wishlistApi, cartApi } from "@/lib/api";
+import { resolveAssetUrl, wishlistApi, cartApi, couponsApi } from "@/lib/api";
 
 export type CartItem = {
+  id?: string | number;
   productId: string;
   slug: string;
   name: string;
@@ -33,7 +34,7 @@ type Action =
   | { type: "WISH_REMOVE"; id: string }
   | { type: "WISH_SET"; ids: string[]; items: Product[] }
   | { type: "VIEWED"; id: string }
-  | { type: "COUPON"; code: string }
+  | { type: "COUPON"; code: string; pct: number }
   | { type: "COUPON_CLEAR" }
   | { type: "CLEAR_CART" }
   | { type: "HYDRATE"; state: State }
@@ -133,10 +134,7 @@ function reducer(state: State, action: Action): State {
         recent: [action.id, ...state.recent.filter((id) => id !== action.id)].slice(0, 6),
       };
     case "COUPON": {
-      const code = action.code.trim().toUpperCase();
-      const map: Record<string, number> = { WELCOME10: 10, MAISON15: 15, ATELIER20: 20 };
-      if (!map[code]) return state;
-      return { ...state, coupon: { code, pct: map[code] } };
+      return { ...state, coupon: { code: action.code, pct: action.pct } };
     }
     case "COUPON_CLEAR":
       return { ...state, coupon: undefined };
@@ -158,7 +156,7 @@ type Ctx = {
   removeFromWish: (id: string | number) => void;
   isWished: (id: string | number) => boolean;
   markViewed: (id: string) => void;
-  applyCoupon: (code: string) => boolean;
+  applyCoupon: (code: string) => Promise<boolean>;
   clearCoupon: () => void;
   clearCart: () => void;
   itemKey: (i: CartItem) => string;
@@ -190,8 +188,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    fetchCart();
-  }, [activeCustomerId, authState.loading, fetchCart]);
+    // When logging in, if we have guest items, merge them with the server cart
+    const mergeAndFetch = async () => {
+      const guestItems = [...state.cart];
+      if (guestItems.length > 0) {
+        try {
+          // Add guest items to server cart one by one
+          await Promise.all(guestItems.map(item => 
+            cartApi.add(item.productId, item.color, item.size, item.qty)
+          ));
+        } catch (err) {
+          console.error("Failed to merge guest cart:", err);
+        }
+      }
+      fetchCart();
+    };
+
+    mergeAndFetch();
+  }, [activeCustomerId, authState.loading]); // We intentionally leave state.cart out of dependencies to only merge on login transition
 
   useEffect(() => {
     if (!socket || !activeCustomerId) return;
@@ -218,7 +232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const totals = useMemo(() => {
     const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
     const discount = state.coupon ? (subtotal * state.coupon.pct) / 100 : 0;
-    const shipping = subtotal > 250 || subtotal === 0 ? 0 : 18;
+    const shipping = subtotal > 5000 || subtotal === 0 ? 0 : 150;
     const count = state.cart.reduce((s, i) => s + i.qty, 0);
     const total = Math.max(0, subtotal - discount) + shipping;
     return { subtotal, discount, shipping, total, count };
@@ -287,11 +301,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     isWished: (id) => Boolean(activeCustomerId) && state.wishlist.includes(productId(id)),
     markViewed: (id) => dispatch({ type: "VIEWED", id }),
-    applyCoupon: (code) => {
-      const map: Record<string, number> = { WELCOME10: 10, MAISON15: 15, ATELIER20: 20 };
-      const ok = !!map[code.trim().toUpperCase()];
-      if (ok) dispatch({ type: "COUPON", code });
-      return ok;
+    applyCoupon: async (code) => {
+      try {
+        const { coupon } = await couponsApi.validate(code);
+        dispatch({ type: "COUPON", code: coupon.code, pct: coupon.pct });
+        return true;
+      } catch {
+        return false;
+      }
     },
     clearCoupon: () => dispatch({ type: "COUPON_CLEAR" }),
     clearCart: () => {

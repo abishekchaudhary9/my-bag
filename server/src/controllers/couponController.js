@@ -5,4 +5,9 @@ async function validateCoupon(req, res) {
   res.json({ coupon });
 }
 
-module.exports = { validateCoupon };
+async function listActiveCoupons(req, res) {
+  const coupons = await couponService.listActiveCoupons();
+  res.json({ coupons });
+}
+
+module.exports = { validateCoupon, listActiveCoupons };

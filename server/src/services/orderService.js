@@ -3,6 +3,8 @@ const { mapOrder } = require("../models/orderModel");
 const { emitEvent } = require("../lib/socket");
 const createHttpError = require("../utils/httpError");
 const { createNotification } = require("./notificationService");
+const { sendEmail } = require("../utils/mailer");
+const { orderConfirmationTemplate } = require("../utils/emailTemplates");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
 
 async function createOrder(user, data) {
@@ -96,7 +98,38 @@ async function createOrder(user, data) {
     `/orders`
   );
 
-  emitEvent("admins", "new_order", { orderId: result.insertId });
+  // Send Order Confirmation Email
+  if (shippingInfo.email && !shippingInfo.email.includes("phone.maison.local")) {
+    sendEmail({
+      to: shippingInfo.email,
+      subject: `Order Confirmation: #${orderNumber}`,
+      html: orderConfirmationTemplate({
+        name: shippingInfo.firstName,
+        orderNumber,
+        items,
+        subtotal,
+        shipping: shipping || 0,
+        discount: discount || 0,
+        total,
+        address: `${shippingInfo.street}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zip}, ${shippingInfo.country || DEFAULT_COUNTRY}`
+      })
+    }).catch(err => console.error("Order Confirmation Email Failed:", err));
+  }
+
+  // Notify Admins
+  const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+  if (admins.length > 0) {
+    for (const admin of admins) {
+      await createNotification(
+        admin.id,
+        "New Order Received",
+        `A new order #${orderNumber} has been placed by ${shippingInfo.firstName} ${shippingInfo.lastName}.`,
+        `/admin?tab=orders&id=${orderNumber}`
+      );
+    }
+  }
+
+  emitEvent("admins", "new_order", { orderId: result.insertId, orderNumber });
 
   return {
     id: orderNumber,

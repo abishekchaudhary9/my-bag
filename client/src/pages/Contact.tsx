@@ -16,9 +16,8 @@ export default function Contact() {
       await contactApi.send(form);
       setForm({ name: "", email: "", subject: "", message: "" });
       toast.success("Message sent", { description: "We'll respond within 24 hours." });
-    } catch {
-      toast.success("Message sent", { description: "We'll respond within 24 hours." });
-      setForm({ name: "", email: "", subject: "", message: "" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send message", { description: "Please try again later or contact us via WhatsApp." });
     } finally {
       setLoading(false);
     }
@@ -44,7 +43,7 @@ export default function Contact() {
         </form>
         <aside className="space-y-8">
           <div className="eyebrow mb-4">Contact Details</div>
-          {[{ icon: Mail, label: "Email", value: "hello@maison.com" },{ icon: Phone, label: "Phone", value: "+39 055 123 4567" },{ icon: MapPin, label: "Atelier", value: "Via dei Servi 24, 50122 Florence, Italy" },{ icon: Clock, label: "Hours", value: "Mon–Fri, 9:00–18:00 CET" }].map((c) => (
+          {[{ icon: Mail, label: "Email", value: "hello@maison.com.np" },{ icon: Phone, label: "Phone", value: "+977 1 4220000" },{ icon: MapPin, label: "Atelier", value: "Durbarmarg, Kathmandu, Nepal" },{ icon: Clock, label: "Hours", value: "Sun–Fri, 10:00–18:00 NPT" }].map((c) => (
             <div key={c.label} className="flex gap-4">
               <c.icon className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" strokeWidth={1.5} />
               <div><div className="text-xs text-muted-foreground mb-1">{c.label}</div><div className="text-sm">{c.value}</div></div>

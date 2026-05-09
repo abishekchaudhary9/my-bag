@@ -21,12 +21,12 @@ async function replyToReview(req, res) {
 }
 
 async function updateReview(req, res) {
-  const result = await reviewService.updateReview(req.user.id, req.params.reviewId, req.body);
+  const result = await reviewService.updateReview(req.user, req.params.reviewId, req.body);
   res.json(result);
 }
 
 async function deleteReview(req, res) {
-  const result = await reviewService.deleteReview(req.user.id, req.params.reviewId);
+  const result = await reviewService.deleteReview(req.user, req.params.reviewId);
   res.json(result);
 }
 

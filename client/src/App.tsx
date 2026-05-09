@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StoreProvider } from "@/context/StoreContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Shop from "./pages/Shop.tsx";
@@ -28,6 +29,7 @@ import FAQ from "./pages/FAQ.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
 import SizeGuide from "./pages/SizeGuide.tsx";
+import Offers from "./pages/Offers.tsx";
 import ScrollToTop from "./components/ScrollToTop.tsx";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute.tsx";
 
@@ -39,42 +41,45 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
-          <StoreProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/shop" element={<Shop />} />
-              <Route path="/product/:slug" element={<ProductPage />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/wishlist" element={<Wishlist />} />
-              <Route path="/journal" element={<Journal />} />
-              {/* Auth */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/account" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/verify" element={<Verify />} />
-              {/* User */}
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-              <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
-              {/* Admin */}
-              <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-              {/* Info pages */}
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/shipping-returns" element={<ShippingReturns />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/size-guide" element={<SizeGuide />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </StoreProvider>
+          <ThemeProvider>
+            <StoreProvider>
+              <BrowserRouter>
+                <ScrollToTop />
+                <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/product/:slug" element={<ProductPage />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/wishlist" element={<Wishlist />} />
+                <Route path="/journal" element={<Journal />} />
+                {/* Auth */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/account" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/verify" element={<Verify />} />
+                {/* User */}
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+                {/* Admin */}
+                <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+                {/* Info pages */}
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/shipping-returns" element={<ShippingReturns />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/size-guide" element={<SizeGuide />} />
+                <Route path="/offers" element={<Offers />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </StoreProvider>
+          </ThemeProvider>
         </AuthProvider>
       </TooltipProvider>
   </QueryClientProvider>

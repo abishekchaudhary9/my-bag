@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Check, Package, ArrowRight, Printer, Copy } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useAuth } from "@/context/AuthContext";
@@ -7,8 +7,21 @@ import { toast } from "sonner";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
+  const [searchParams] = useSearchParams();
   const { state, isAdmin, socket, fetchOrders } = useAuth();
   const order = state.orders.find((o) => o.id === orderId);
+
+  useEffect(() => {
+    // If we're coming back from eSewa success (q=su or token) or Khalti success (q=khalti & status=Completed)
+    if (
+      searchParams.get("q") === "su" || 
+      searchParams.get("token") || 
+      (searchParams.get("q") === "khalti" && searchParams.get("status") === "Completed")
+    ) {
+      toast.success("Payment verified successfully!");
+      fetchOrders();
+    }
+  }, [searchParams, fetchOrders]);
 
   useEffect(() => {
     if (!socket || !orderId) return;
