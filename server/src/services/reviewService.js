@@ -1,230 +1,142 @@
-const pool = require("../config/database");
-const { emitEvent } = require("../lib/socket");
+const mongoose = require("mongoose");
+const Review = require("../models/reviewModel");
+const Product = require("../models/productModel");
+const Order = require("../models/orderModel");
 const createHttpError = require("../utils/httpError");
-const { createNotification } = require("./notificationService");
 
-async function hasDeliveredOrder(userId, productId) {
-  const [product] = await pool.query("SELECT name FROM products WHERE id = ?", [productId]);
-  if (product.length === 0) {
-    return false;
-  }
-
-  const [rows] = await pool.query(
-    `SELECT o.id FROM orders o
-     JOIN order_items oi ON oi.order_id = o.id
-     WHERE o.user_id = ? AND o.status = 'delivered' AND oi.product_name = ?
-     LIMIT 1`,
-    [userId, product[0].name]
-  );
-
-  return rows.length > 0;
-}
-
-async function updateProductRating(productId) {
-  const [stats] = await pool.query(
-    "SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM product_reviews WHERE product_id = ?",
-    [productId]
-  );
-
-  await pool.query(
-    "UPDATE products SET rating = ?, reviews = ? WHERE id = ?",
-    [parseFloat(stats[0].avg_rating || 0).toFixed(1), stats[0].count, productId]
-  );
-}
-
-async function listReviews(productId) {
-  const [reviews] = await pool.query(
-    `SELECT r.id, r.rating, r.title, r.body, r.admin_reply, r.created_at, r.user_id,
-            u.first_name, u.last_name
-     FROM product_reviews r
-     JOIN users u ON r.user_id = u.id
-     WHERE r.product_id = ?
-     ORDER BY r.created_at DESC`,
-    [productId]
-  );
-
-  const formatted = reviews.map((review) => ({
-    id: review.id,
-    rating: review.rating,
-    title: review.title,
-    text: review.body,
-    adminReply: review.admin_reply,
-    userId: review.user_id,
-    name: `${review.first_name} ${review.last_name[0]}.`,
-    date: review.created_at,
-  }));
-
-  const avg = reviews.length > 0
-    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
-    : "0";
-
-  return { reviews: formatted, average: parseFloat(avg), count: reviews.length };
-}
-
-async function getReviewEligibility(userId, productId) {
-  const [existing] = await pool.query(
-    "SELECT id FROM product_reviews WHERE product_id = ? AND user_id = ?",
-    [productId, userId]
-  );
-
-  if (existing.length > 0) {
-    return { eligible: false, reason: "already_reviewed" };
-  }
-
-  const delivered = await hasDeliveredOrder(userId, productId);
-  if (!delivered) {
-    return { eligible: false, reason: "no_delivered_order" };
-  }
-
-  return { eligible: true, reason: null };
-}
-
-async function createReview(userId, productId, { rating, title, body }) {
-  if (!rating || !title || !body) {
-    throw createHttpError(400, "Rating, title, and review text are required.");
-  }
-
-  if (rating < 1 || rating > 5) {
-    throw createHttpError(400, "Rating must be between 1 and 5.");
-  }
-
-  const [existing] = await pool.query(
-    "SELECT id FROM product_reviews WHERE product_id = ? AND user_id = ?",
-    [productId, userId]
-  );
-  if (existing.length > 0) {
-    throw createHttpError(400, "You have already reviewed this product.");
-  }
-
-  const [product] = await pool.query("SELECT id FROM products WHERE id = ?", [productId]);
-  if (product.length === 0) {
-    throw createHttpError(404, "Product not found.");
-  }
-
-  const delivered = await hasDeliveredOrder(userId, productId);
-  if (!delivered) {
-    throw createHttpError(403, "You can only review products from delivered orders.");
-  }
-
-  const [result] = await pool.query(
-    "INSERT INTO product_reviews (product_id, user_id, rating, title, body) VALUES (?, ?, ?, ?, ?)",
-    [productId, userId, rating, title, body]
-  );
-  const reviewId = result.insertId;
-
-  await updateProductRating(productId);
-
-  // Notify Admins
-  const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
-  const [productInfo] = await pool.query("SELECT name, slug FROM products WHERE id = ?", [productId]);
+async function getProductReviews(productId) {
+  const reviews = await Review.find({ product: productId }).populate("user").sort({ created_at: -1 });
   
-  if (admins.length > 0 && productInfo.length > 0) {
-    for (const admin of admins) {
-      await createNotification(
-        admin.id,
-        "New Product Review",
-        `A customer left a review for the ${productInfo[0].name}.`,
-        `/admin?tab=feedback#feedback-review-${reviewId}`
-      );
-    }
-  }
+  // Calculate average
+  const stats = await Review.aggregate([
+    { $match: { product: new mongoose.Types.ObjectId(productId) } },
+    { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+  ]);
 
+  const average = stats.length > 0 ? stats[0].avgRating : 0;
+  const count = stats.length > 0 ? stats[0].count : 0;
 
-
-  // Real-time: Notify product page and admins
-  emitEvent(`product:${productId}`, "new_review", { productId });
-  emitEvent("admins", "new_review", { productId, productName: productInfo[0].name });
-
-  return { message: "Review submitted successfully." };
+  return {
+    reviews: reviews.map(r => ({
+      id: String(r._id),
+      userName: r.user ? `${r.user.first_name} ${r.user.last_name}` : "Unknown User",
+      userAvatar: r.user?.avatar,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      adminReply: r.admin_reply,
+      createdAt: r.created_at
+    })),
+    average: parseFloat(average.toFixed(1)),
+    count
+  };
 }
 
-async function replyToReview(user, reviewId, reply) {
-  if (user.role !== "admin") {
-    throw createHttpError(403, "Admin only.");
-  }
+async function checkReviewEligibility(userId, productId) {
+  const product = await Product.findById(productId);
+  if (!product) throw createHttpError(404, "Product not found");
 
-  await pool.query("UPDATE product_reviews SET admin_reply = ? WHERE id = ?", [reply, reviewId]);
+  const order = await Order.findOne({
+    user: userId,
+    "items.product_name": product.name,
+    status: "delivered"
+  });
 
-  const [reviewData] = await pool.query(
-    `SELECT r.user_id, r.product_id, p.slug, p.name
-     FROM product_reviews r
-     JOIN products p ON r.product_id = p.id
-     WHERE r.id = ?`,
-    [reviewId]
-  );
-
-  if (reviewData.length > 0) {
-    await createNotification(
-      reviewData[0].user_id,
-      "Review Reply",
-      `Maison has replied to your review of the ${reviewData[0].name}.`,
-      `/product/${reviewData[0].slug}#review-${reviewId}`
-    );
-  }
-
-
-
-  // Real-time: Notify product page
-  emitEvent(`product:${reviewData[0].product_id || ""}`, "review_update", { reviewId });
-
-  return { message: "Reply added successfully." };
+  return { 
+    eligible: !!order, 
+    reason: order ? null : "You can only review products you have purchased and received." 
+  };
 }
 
-async function updateReview(user, reviewId, { rating, title, body }) {
-  if (!rating || !title || !body) {
-    throw createHttpError(400, "Rating, title, and review text are required.");
+async function submitReview(userId, productId, data) {
+  const eligibility = await checkReviewEligibility(userId, productId);
+  if (!eligibility.eligible) {
+    throw createHttpError(403, eligibility.reason);
   }
 
-  const [review] = await pool.query(
-    "SELECT * FROM product_reviews WHERE id = ?",
-    [reviewId]
-  );
+  const review = new Review({
+    product: productId,
+    user: userId,
+    rating: data.rating,
+    title: data.title,
+    body: data.body
+  });
 
-  if (review.length === 0) {
-    throw createHttpError(404, "Review not found.");
+  await review.save();
+
+  // Update product stats
+  const stats = await Review.aggregate([
+    { $match: { product: new mongoose.Types.ObjectId(productId) } },
+    { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+  ]);
+
+  if (stats.length > 0) {
+    await Product.findByIdAndUpdate(productId, {
+      rating: parseFloat(stats[0].avgRating.toFixed(1)),
+      reviews: stats[0].count
+    });
   }
 
-  // Allow admin OR owner
-  if (user.role !== "admin" && review[0].user_id !== user.id) {
-    throw createHttpError(403, "Unauthorized.");
-  }
-
-  await pool.query(
-    "UPDATE product_reviews SET rating = ?, title = ?, body = ? WHERE id = ?",
-    [rating, title, body, reviewId]
-  );
-
-  await updateProductRating(review[0].product_id);
-  return { message: "Review updated successfully." };
+  return { message: "Review submitted successfully" };
 }
 
-async function deleteReview(user, reviewId) {
-  const [review] = await pool.query(
-    "SELECT * FROM product_reviews WHERE id = ?",
-    [reviewId]
+async function updateReview(userId, reviewId, data) {
+  const review = await Review.findOneAndUpdate(
+    { _id: reviewId, user: userId },
+    { $set: { rating: data.rating, title: data.title, body: data.body } },
+    { new: true }
   );
 
-  if (review.length === 0) {
-    throw createHttpError(404, "Review not found.");
+  if (!review) throw createHttpError(404, "Review not found");
+
+  const stats = await Review.aggregate([
+    { $match: { product: review.product } },
+    { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+  ]);
+
+  await Product.findByIdAndUpdate(review.product, {
+    rating: parseFloat(stats[0].avgRating.toFixed(1)),
+    reviews: stats[0].count
+  });
+
+  return { message: "Review updated successfully" };
+}
+
+async function deleteReview(userId, reviewId, isAdmin = false) {
+  const filter = { _id: reviewId };
+  if (!isAdmin) filter.user = userId;
+
+  const review = await Review.findOneAndDelete(filter);
+  if (!review) throw createHttpError(404, "Review not found");
+
+  const stats = await Review.aggregate([
+    { $match: { product: review.product } },
+    { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+  ]);
+
+  if (stats.length > 0) {
+    await Product.findByIdAndUpdate(review.product, {
+      rating: parseFloat(stats[0].avgRating.toFixed(1)),
+      reviews: stats[0].count
+    });
+  } else {
+    await Product.findByIdAndUpdate(review.product, { rating: 0, reviews: 0 });
   }
 
-  // Allow admin OR owner
-  if (user.role !== "admin" && review[0].user_id !== user.id) {
-    throw createHttpError(403, "Unauthorized.");
-  }
+  return { message: "Review deleted successfully" };
+}
 
-  await pool.query("DELETE FROM product_reviews WHERE id = ?", [reviewId]);
-  await updateProductRating(review[0].product_id);
-  return { message: "Review deleted successfully." };
+async function replyToReview(reviewId, reply) {
+  const review = await Review.findByIdAndUpdate(reviewId, { admin_reply: reply }, { new: true });
+  if (!review) throw createHttpError(404, "Review not found");
+  return { message: "Reply added successfully" };
 }
 
 module.exports = {
-  listReviews,
-  getReviewEligibility,
-  createReview,
-  replyToReview,
+  getProductReviews,
+  checkReviewEligibility,
+  submitReview,
   updateReview,
   deleteReview,
-  hasDeliveredOrder,
-  updateProductRating,
+  replyToReview
 };

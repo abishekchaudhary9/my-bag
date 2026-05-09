@@ -1,0 +1,180 @@
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { toast } from "sonner";
+import { adminApi, productsApi } from "@/lib/api";
+import { products as localProducts } from "@/data/products";
+import { parseCurrency } from "@/utils/adminUtils";
+
+export function useAdminData() {
+  const [loading, setLoading] = useState(false);
+  
+  // Dashboard & Stats
+  const [stats, setStats] = useState<any>(null);
+  const [productList, setProductList] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [feedback, setFeedback] = useState({ reviews: [] as any[], questions: [] as any[] });
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    try { 
+      const d = await adminApi.stats(); 
+      setStats(d.stats); 
+    } catch (err: any) { 
+      console.error("Stats fetch failed:", err);
+      toast.error("Could not load dashboard stats");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async (status?: string) => {
+    setLoading(true);
+    try {
+      const d = await adminApi.orders(status === "all" ? undefined : status);
+      setOrders(d.orders);
+    } catch (err: any) {
+      console.error("Orders fetch failed:", err);
+      toast.error("Could not load orders list");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    try { 
+      const d = await adminApi.customers(); 
+      setCustomers(d.customers); 
+    } catch (err: any) {
+      console.error("Customers fetch failed:", err);
+      toast.error("Could not load customers list");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await productsApi.list();
+      setProductList(d.products);
+    } catch {
+      setProductList(localProducts as any[]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchFeedback = useCallback(async () => {
+    setLoading(true);
+    try { 
+      const d = await adminApi.feedback(); 
+      if (d) setFeedback({ reviews: d.reviews || [], questions: d.questions || [] }); 
+    } catch (err: any) {
+      console.error("Feedback fetch failed:", err);
+      toast.error("Could not load reviews/questions");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    try { 
+      const d = await adminApi.notifications(); 
+      if (d && d.notifications) setNotifications(d.notifications); 
+    } catch (err: any) {
+      console.error("Notifications fetch failed:", err);
+      toast.error("Could not load notifications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchCoupons = useCallback(async () => {
+    setLoading(true);
+    try { 
+      const d = await adminApi.coupons(); 
+      if (d && d.coupons) setCoupons(d.coupons); 
+    } catch (err: any) {
+      console.error("Coupons fetch failed:", err);
+      toast.error("Could not load coupons");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Computed Values
+  const displayRevenue = stats?.revenue || 0;
+  const displayOrders = stats?.orders || 0;
+  const displayCustomers = stats?.customers || 0;
+  const displayAvgOrder = displayOrders > 0 ? displayRevenue / displayOrders : 0;
+  const processingOrders = stats?.processingOrders || 0;
+  const shippedOrders = stats?.shippedOrders || 0;
+  const deliveredOrders = stats?.deliveredOrders || 0;
+  
+  const revenueTrend = stats?.revenueTrend || [];
+  const statusData = useMemo(() => [
+    { status: "processing", label: "Processing", orders: processingOrders, fill: "#b98f47" },
+    { status: "shipped", label: "Shipped", orders: shippedOrders, fill: "#2563eb" },
+    { status: "delivered", label: "Delivered", orders: deliveredOrders, fill: "#059669" },
+    { status: "cancelled", label: "Cancelled", orders: stats?.cancelledOrders || 0, fill: "#dc2626" },
+  ].filter(d => d.orders > 0), [stats, processingOrders, shippedOrders, deliveredOrders]);
+
+  const categoryData = stats?.categoryTrend || [];
+  const topCustomers = stats?.topCustomers || [];
+  const lowStockProducts = productList.filter((p) => (Number(p.stock) || 0) <= 10).slice(0, 5);
+  const unresolvedFeedback = feedback.reviews.length + feedback.questions.length;
+  
+  const inventoryStats = useMemo(() => {
+    const value = productList.reduce((acc, p) => acc + (Number(p.price) || 0) * (Number(p.stock) || 0), 0);
+    const avg = productList.length ? Math.round(productList.reduce((acc, p) => acc + (Number(p.stock) || 0), 0) / productList.length) : 0;
+    return { value, avg };
+  }, [productList]);
+
+  const recentOrders = useMemo(() => orders.slice(0, 6), [orders]);
+  const customerOrderCount = customers.reduce((acc, c) => acc + (Number(c.orders) || 0), 0);
+  const customerLifetimeValue = customers.reduce((acc, c) => acc + parseCurrency(c.spent), 0);
+
+  return {
+    loading,
+    stats,
+    productList,
+    orders,
+    customers,
+    feedback,
+    notifications,
+    coupons,
+    fetchStats,
+    fetchOrders,
+    fetchCustomers,
+    fetchProducts,
+    fetchFeedback,
+    fetchNotifications,
+    fetchCoupons,
+    displayRevenue,
+    displayOrders,
+    displayCustomers,
+    displayAvgOrder,
+    processingOrders,
+    shippedOrders,
+    deliveredOrders,
+    revenueTrend,
+    statusData,
+    categoryData,
+    topCustomers,
+    lowStockProducts,
+    unresolvedFeedback,
+    inventoryStats,
+    recentOrders,
+    customerOrderCount,
+    customerLifetimeValue,
+    setProductList,
+    setOrders,
+    setFeedback,
+    setNotifications,
+    setCoupons
+  };
+}

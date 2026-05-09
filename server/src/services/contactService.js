@@ -1,35 +1,16 @@
-const pool = require("../config/database");
-const { emitEvent } = require("../lib/socket");
-const createHttpError = require("../utils/httpError");
-const { createNotification } = require("./notificationService");
+const ContactMessage = require("../models/contactModel");
 
-async function createContactMessage({ name, email, subject, message }) {
-  if (!name || !email || !subject || !message) {
-    throw createHttpError(400, "All fields are required.");
-  }
-
-  await pool.query(
-    "INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)",
-    [name.trim(), email.trim(), subject.trim(), message.trim()]
-  );
-
-  // Notify Admins
-  const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
-  if (admins.length > 0) {
-    for (const admin of admins) {
-      await createNotification(
-        admin.id,
-        "New Customer Message",
-        `New inquiry from ${name}: ${subject}`,
-        `/admin` // This takes them to the Admin Panel where they can go to the Messages tab
-      );
-    }
-  }
-
-  // Real-time: Notify admins of the new message
-  emitEvent("admins", "new_message", { name, subject });
-
-  return { message: "Message sent successfully. We'll respond within 24 hours." };
+async function sendMessage(data) {
+  const message = new ContactMessage({
+    name: data.name,
+    email: data.email,
+    subject: data.subject,
+    message: data.message
+  });
+  await message.save();
+  return { message: "Message sent successfully" };
 }
 
-module.exports = { createContactMessage };
+module.exports = {
+  sendMessage
+};

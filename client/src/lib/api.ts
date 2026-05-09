@@ -439,3 +439,17 @@ export const adminApi = {
   deleteCoupon: (id: number) =>
     request<{ message: string }>(`/admin/coupons/${id}`, { method: "DELETE" }),
 };
+
+// ─── AI ──────────────────────────────────────────────────────
+export const aiApi = {
+  summarize: (text: string) =>
+    request<{ success: boolean; summary: string }>("/ai/summarize", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+  searchAssistant: (query: string, categories?: string[]) =>
+    request<{ success: boolean; suggestions: string }>("/ai/search-assistant", {
+      method: "POST",
+      body: JSON.stringify({ query, categories }),
+    }),
+};

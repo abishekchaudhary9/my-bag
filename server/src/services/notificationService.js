@@ -1,58 +1,71 @@
-const pool = require("../config/database");
-const { emitEvent } = require("../lib/socket");
-
-async function createNotification(userId, title, message, link) {
-  await pool.query(
-    "INSERT INTO notifications (user_id, title, message, link) VALUES (?, ?, ?, ?)",
-    [userId, title, message, link]
-  );
-
-  // Real-time: Notify the user
-  emitEvent(`user_${userId}`, "notification", { title, message, link });
-}
+const Notification = require("../models/notificationModel");
+const createHttpError = require("../utils/httpError");
 
 async function listNotifications(userId) {
-  const [rows] = await pool.query(
-    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
-    [userId]
-  );
-  return rows;
+  const notifications = await Notification.find({ user: userId }).sort({ created_at: -1 });
+  return { 
+    notifications: notifications.map(n => ({
+      id: String(n._id),
+      title: n.title,
+      message: n.message,
+      link: n.link,
+      isRead: n.is_read,
+      createdAt: n.created_at
+    }))
+  };
 }
 
-async function markNotificationRead(userId, notificationId) {
-  await pool.query(
-    "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?",
-    [notificationId, userId]
+async function markAsRead(userId, notificationId) {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: notificationId, user: userId },
+    { $set: { is_read: true } },
+    { new: true }
   );
-  return { message: "Notification marked as read" };
+  
+  if (!notification) {
+    throw createHttpError(404, "Notification not found");
+  }
+  
+  return { message: "Marked as read" };
 }
 
-async function markAllNotificationsRead(userId) {
-  await pool.query(
-    "UPDATE notifications SET is_read = 1 WHERE user_id = ?",
-    [userId]
+async function markAllAsRead(userId) {
+  await Notification.updateMany(
+    { user: userId, is_read: false },
+    { $set: { is_read: true } }
   );
   return { message: "All notifications marked as read" };
 }
 
 async function deleteNotification(userId, notificationId) {
-  await pool.query(
-    "DELETE FROM notifications WHERE id = ? AND user_id = ?",
-    [notificationId, userId]
-  );
+  const result = await Notification.findOneAndDelete({ _id: notificationId, user: userId });
+  if (!result) {
+    throw createHttpError(404, "Notification not found");
+  }
   return { message: "Notification deleted" };
 }
 
-async function clearNotifications(userId) {
-  await pool.query("DELETE FROM notifications WHERE user_id = ?", [userId]);
-  return { message: "All notifications deleted" };
+async function clearAllNotifications(userId) {
+  await Notification.deleteMany({ user: userId });
+  return { message: "All notifications cleared" };
+}
+
+async function createNotification(userId, data) {
+  const notification = new Notification({
+    user: userId,
+    title: data.title,
+    message: data.message,
+    link: data.link
+  });
+  await notification.save();
+  return notification;
 }
 
 module.exports = {
-  createNotification,
   listNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
+  markAsRead,
+  markAllAsRead,
   deleteNotification,
-  clearNotifications,
+  clearAllNotifications,
+  createNotification
 };

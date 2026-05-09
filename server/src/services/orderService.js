@@ -1,195 +1,108 @@
-const pool = require("../config/database");
-const { mapOrder } = require("../models/orderModel");
-const { emitEvent } = require("../lib/socket");
+const Order = require("../models/orderModel");
+const CartItem = require("../models/cartModel");
+const Product = require("../models/productModel");
 const createHttpError = require("../utils/httpError");
-const { createNotification } = require("./notificationService");
-const { sendEmail } = require("../utils/mailer");
-const { orderConfirmationTemplate } = require("../utils/emailTemplates");
-const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
+const { emitEvent } = require("../lib/socket");
 
-async function createOrder(user, data) {
-  if (user.role === "admin") {
-    throw createHttpError(403, "Admin accounts cannot place orders.");
-  }
+async function createOrder(userId, orderData) {
+  const { 
+    items, subtotal, shipping, discount, total, 
+    shippingAddress, paymentMethod 
+  } = orderData;
 
-  const { items, subtotal, shipping, discount, total, shippingInfo, paymentMethod } = data;
-  if (!items || items.length === 0) {
-    throw createHttpError(400, "Order must have at least one item.");
-  }
+  const orderNumber = "ORD-" + Math.random().toString(36).substr(2, 9).toUpperCase();
 
-  if (!shippingInfo?.firstName || !shippingInfo?.lastName || !shippingInfo?.email || !shippingInfo?.phone || !shippingInfo?.street || !shippingInfo?.city) {
-    throw createHttpError(400, "Complete shipping information is required.");
-  }
-
-  if (!isValidEmail(shippingInfo.email)) {
-    throw createHttpError(400, "Enter a valid shipping email address.");
-  }
-
-  if (!isValidNepalPhone(shippingInfo.phone)) {
-    throw createHttpError(400, "Enter a valid Nepal mobile number.");
-  }
-
-  const shippingPhone = formatNepalPhone(shippingInfo.phone);
-
-  const orderNumber = `ORD-${Date.now().toString().slice(-8)}`;
-  const trackingNumber = `MSN-TRK-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-  // Validate stock for all items
-  for (const item of items) {
-    const [prod] = await pool.query("SELECT name, stock FROM products WHERE name = ?", [item.name]);
-    if (prod.length === 0) throw createHttpError(404, `Product ${item.name} not found.`);
-    if (prod[0].stock < item.qty) {
-      throw createHttpError(400, `Not enough stock for ${item.name}. Only ${prod[0].stock} remaining.`);
-    }
-  }
-
-  const [result] = await pool.query(
-    `INSERT INTO orders (order_number, tracking_number, user_id, status, subtotal, shipping, discount, total, payment_method,
-      shipping_first_name, shipping_last_name, shipping_email, shipping_phone,
-      shipping_street, shipping_city, shipping_state, shipping_zip, shipping_country)
-     VALUES (?, ?, ?, 'processing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      orderNumber,
-      trackingNumber,
-      user.id,
-      subtotal,
-      shipping || 0,
-      discount || 0,
-      total,
-      paymentMethod || "card",
-      shippingInfo?.firstName,
-      shippingInfo?.lastName,
-      shippingInfo?.email,
-      shippingPhone,
-      shippingInfo?.street,
-      shippingInfo?.city,
-      shippingInfo?.state,
-      shippingInfo?.zip,
-      shippingInfo?.country || DEFAULT_COUNTRY,
-    ]
-  );
-
-  for (const item of items) {
-    await pool.query(
-      `INSERT INTO order_items (order_id, product_name, color, size, qty, price, image)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [result.insertId, item.name, item.color, item.size, item.qty, item.price, item.image || null]
-    );
-
-    // Deduct stock
-    const [prodRows] = await pool.query("SELECT id, stock FROM products WHERE name = ?", [item.name]);
-    if (prodRows.length > 0) {
-      const newStock = Math.max(0, prodRows[0].stock - item.qty);
-      await pool.query("UPDATE products SET stock = ? WHERE id = ?", [newStock, prodRows[0].id]);
-      
-      // Real-time: Notify product page of stock change
-      emitEvent(`product:${prodRows[0].id}`, "stock_update", { productId: prodRows[0].id, stock: newStock });
-    }
-  }
-
-  await pool.query("DELETE FROM cart_items WHERE user_id = ?", [user.id]);
-  
-  // Real-time: Sync cart across user's devices (clear it)
-  emitEvent(`user_${user.id}`, "cart_update");
-
-  // Notify Customer
-  await createNotification(
-    user.id,
-    "Order Confirmed",
-    `Thank you for your order! Your order #${orderNumber} is now being processed.`,
-    `/orders`
-  );
-
-  // Send Order Confirmation Email
-  if (shippingInfo.email && !shippingInfo.email.includes("phone.maison.local")) {
-    sendEmail({
-      to: shippingInfo.email,
-      subject: `Order Confirmation: #${orderNumber}`,
-      html: orderConfirmationTemplate({
-        name: shippingInfo.firstName,
-        orderNumber,
-        items,
-        subtotal,
-        shipping: shipping || 0,
-        discount: discount || 0,
-        total,
-        address: `${shippingInfo.street}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zip}, ${shippingInfo.country || DEFAULT_COUNTRY}`
-      })
-    }).catch(err => console.error("Order Confirmation Email Failed:", err));
-  }
-
-  // Notify Admins
-  const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
-  if (admins.length > 0) {
-    for (const admin of admins) {
-      await createNotification(
-        admin.id,
-        "New Order Received",
-        `A new order #${orderNumber} has been placed by ${shippingInfo.firstName} ${shippingInfo.lastName}.`,
-        `/admin?tab=orders&id=${orderNumber}`
-      );
-    }
-  }
-
-  emitEvent("admins", "new_order", { orderId: result.insertId, orderNumber });
-
-  return {
-    id: orderNumber,
-    date: new Date().toISOString().split("T")[0],
-    status: "processing",
-    items,
+  const order = new Order({
+    order_number: orderNumber,
+    user: userId,
     subtotal,
-    shipping: shipping || 0,
-    discount: discount || 0,
+    shipping,
+    discount,
     total,
-    trackingNumber,
-  };
-}
+    shipping_address: {
+      first_name: shippingAddress.firstName,
+      last_name: shippingAddress.lastName,
+      email: shippingAddress.email,
+      phone: shippingAddress.phone,
+      street: shippingAddress.street,
+      city: shippingAddress.city,
+      state: shippingAddress.state,
+      zip: shippingAddress.zip,
+      country: shippingAddress.country
+    },
+    payment_method: paymentMethod,
+    items: items.map(item => ({
+      product_name: item.name,
+      color: item.color,
+      size: item.size,
+      qty: item.qty,
+      price: item.price,
+      image: item.image
+    }))
+  });
 
-async function listUserOrders(userId) {
-  const [orders] = await pool.query(
-    "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
-    [userId]
-  );
+  await order.save();
 
-  const result = [];
-  for (const order of orders) {
-    const [items] = await pool.query("SELECT * FROM order_items WHERE order_id = ?", [order.id]);
-    result.push(mapOrder(order, items));
+  // Clear cart
+  await CartItem.deleteMany({ user: userId });
+
+  // Update stock
+  for (const item of items) {
+    await Product.findOneAndUpdate(
+      { name: item.name }, // Should ideally use ID but keeping it simple for now
+      { $inc: { stock: -item.qty } }
+    );
   }
-  return result;
+
+  // Real-time notification for admins
+  emitEvent("admins", "new_order", { 
+    orderNumber: order.order_number, 
+    total: order.total 
+  });
+
+  return { order: order.toJSON() };
 }
 
-async function getUserOrder(orderNumber, userId) {
-  const [orders] = await pool.query(
-    "SELECT * FROM orders WHERE order_number = ? AND user_id = ?",
-    [orderNumber, userId]
+async function getUserOrders(userId) {
+  const filter = userId ? { user: userId } : {};
+  const orders = await Order.find(filter).sort({ created_at: -1 });
+  return { orders: orders.map(o => o.toJSON()) };
+}
+
+async function getOrderDetails(orderNumber) {
+  const order = await Order.findOne({ order_number: orderNumber });
+  if (!order) {
+    throw createHttpError(404, "Order not found");
+  }
+  return { order: order.toJSON() };
+}
+
+async function updateOrderStatus(orderNumber, status, trackingNumber) {
+  const updates = { status };
+  if (trackingNumber) updates.tracking_number = trackingNumber;
+
+  const order = await Order.findOneAndUpdate(
+    { order_number: orderNumber },
+    { $set: updates },
+    { new: true }
   );
 
-  if (orders.length === 0) {
+  if (!order) {
     throw createHttpError(404, "Order not found");
   }
 
-  const [items] = await pool.query("SELECT * FROM order_items WHERE order_id = ?", [orders[0].id]);
-  return mapOrder(orders[0], items);
-}
+  // Notify user via socket
+  emitEvent(`user_${order.user}`, "order_update", { 
+    orderNumber: order.order_number, 
+    status: order.status 
+  });
 
-async function trackOrder(trackingNumber) {
-  const [orders] = await pool.query(
-    "SELECT order_number, status, created_at FROM orders WHERE tracking_number = ?",
-    [trackingNumber]
-  );
-
-  if (orders.length === 0) {
-    throw createHttpError(404, "Invalid tracking number");
-  }
-
-  return orders[0];
+  return { order: order.toJSON() };
 }
 
 module.exports = {
   createOrder,
-  listUserOrders,
-  getUserOrder,
-  trackOrder,
+  getUserOrders,
+  getOrderDetails,
+  updateOrderStatus
 };

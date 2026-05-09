@@ -12,6 +12,7 @@ import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } fr
 import { ProfileSettingsForm } from "@/components/profile/ProfileSettingsForm";
 import { AddressesTabForm } from "@/components/profile/AddressesTabForm";
 import { SecurityTabForm } from "@/components/profile/SecurityTabForm";
+import { ProfileSkeleton } from "@/components/profile/ProfileSkeletons";
 
 type Tab = "overview" | "settings" | "addresses" | "security";
 
@@ -21,11 +22,14 @@ export default function Profile() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     productsApi.list()
       .then(({ products }) => setApiProducts(products as Product[]))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const wishlistItems = useMemo(() => {
@@ -82,6 +86,8 @@ export default function Profile() {
       toast.dismiss(loadingToast);
     }
   };
+
+  if (loading) return <Layout><ProfileSkeleton /></Layout>;
 
   return (
     <Layout>

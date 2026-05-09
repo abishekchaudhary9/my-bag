@@ -33,6 +33,7 @@ import SizeGuide from "./pages/SizeGuide.tsx";
 import Offers from "./pages/Offers.tsx";
 import ScrollToTop from "./components/ScrollToTop.tsx";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute.tsx";
+import { CommandPalette } from "./components/CommandPalette.tsx";
 
 const queryClient = new QueryClient();
 
@@ -46,8 +47,9 @@ const App = () => (
             <StoreProvider>
               <BrowserRouter>
                 <ScrollToTop />
+                <CommandPalette />
                 <Routes>
-                <Route path="/" element={<Index />} />
+                  <Route path="/" element={<Index />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/track" element={<TrackOrder />} />
                 <Route path="/product/:slug" element={<ProductPage />} />

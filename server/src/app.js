@@ -5,7 +5,7 @@ const http = require("http");
 const path = require("path");
 const env = require("./config/env");
 const { initSocket } = require("./lib/socket");
-const initDatabase = require("./config/initDatabase");
+
 const { healthCheck, databaseHealthCheck } = require("./controllers/healthController");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
@@ -49,6 +49,7 @@ app.use("/api/uploads", require("./routes/uploads"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/questions", require("./routes/questions"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/ai", require("./routes/ai"));
 
 app.get("/api/health", healthCheck);
 app.get("/api/health/db", databaseHealthCheck);
@@ -58,14 +59,20 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || env.port || 5000;
 
+const connectDB = require("./config/database");
+const seed = require("./config/seed");
+
 if (require.main === module) {
-  initDatabase()
-    .then(() => {
+  connectDB()
+    .then(async () => {
+      // Seed data if needed
+      await seed();
+      
       // Initialize Socket.io
       initSocket(server, allowedOrigins);
 
       server.listen(PORT, () => {
-        console.log(`Maison API server (with Sockets) running on port ${PORT}`);
+        console.log(`Maison API server (with Sockets & MongoDB) running on port ${PORT}`);
         console.log("Health: /api/health");
         console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
       });

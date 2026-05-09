@@ -12,24 +12,28 @@ export default function OrderDetailsModal({
   order,
   loading,
   onClose,
+  onCancel,
 }: {
   order: any | null;
   loading: boolean;
   onClose: () => void;
+  onCancel?: () => void;
 }) {
+  const cancel = onCancel || onClose;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4" onClick={cancel}>
       <div
-        className="bg-background w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-border animate-fade-up"
+        className="bg-background w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-border animate-fade-up shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-6 md:px-8 py-5 flex items-center justify-between">
           <div>
             <div className="eyebrow mb-1">Order Details</div>
-            <h2 className="font-display text-2xl">{order?.id || "Loading..."}</h2>
+            <h2 className="font-display text-3xl tracking-tight">{order?.id || "Loading..."}</h2>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-secondary transition-colors" aria-label="Close">
-            <X className="h-4 w-4" strokeWidth={1.5} />
+          <button onClick={cancel} className="p-2 hover:bg-secondary transition-colors" aria-label="Close">
+            <X className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
 

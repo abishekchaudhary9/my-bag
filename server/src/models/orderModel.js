@@ -1,26 +1,79 @@
-function toDateString(value) {
-  return new Date(value).toISOString().split("T")[0];
-}
+const mongoose = require("mongoose");
 
-function mapOrder(row, items) {
+const orderItemSchema = new mongoose.Schema({
+  product_name: { type: String, required: true },
+  color: { type: String },
+  size: { type: String },
+  qty: { type: Number, required: true, default: 1 },
+  price: { type: Number, required: true },
+  image: { type: String }
+});
+
+const orderSchema = new mongoose.Schema({
+  order_number: { type: String, required: true, unique: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  status: { 
+    type: String, 
+    enum: ["processing", "shipped", "delivered", "cancelled"], 
+    default: "processing" 
+  },
+  subtotal: { type: Number, required: true },
+  shipping: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  total: { type: Number, required: true },
+  tracking_number: { type: String },
+  shipping_address: {
+    first_name: { type: String },
+    last_name: { type: String },
+    email: { type: String },
+    phone: { type: String },
+    street: { type: String },
+    city: { type: String },
+    state: { type: String },
+    zip: { type: String },
+    country: { type: String }
+  },
+  payment_method: { type: String, default: "card" },
+  items: [orderItemSchema],
+  created_at: { type: Date, default: Date.now }
+});
+
+orderSchema.methods.toJSON = function() {
+  const obj = this.toObject();
   return {
-    id: row.order_number,
-    date: toDateString(row.created_at),
-    status: row.status,
-    items: items.map((item) => ({
+    id: String(obj._id),
+    orderNumber: obj.order_number,
+    userId: String(obj.user),
+    status: obj.status,
+    subtotal: obj.subtotal,
+    shipping: obj.shipping,
+    discount: obj.discount,
+    total: obj.total,
+    trackingNumber: obj.tracking_number,
+    shippingAddress: {
+      firstName: obj.shipping_address.first_name,
+      lastName: obj.shipping_address.last_name,
+      email: obj.shipping_address.email,
+      phone: obj.shipping_address.phone,
+      street: obj.shipping_address.street,
+      city: obj.shipping_address.city,
+      state: obj.shipping_address.state,
+      zip: obj.shipping_address.zip,
+      country: obj.shipping_address.country,
+    },
+    paymentMethod: obj.payment_method,
+    items: obj.items.map(item => ({
       name: item.product_name,
       color: item.color,
       size: item.size,
       qty: item.qty,
-      price: parseFloat(item.price),
-      image: item.image || "",
+      price: item.price,
+      image: item.image
     })),
-    subtotal: parseFloat(row.subtotal),
-    shipping: parseFloat(row.shipping),
-    discount: parseFloat(row.discount),
-    total: parseFloat(row.total),
-    trackingNumber: row.tracking_number || undefined,
+    createdAt: obj.created_at
   };
-}
+};
 
-module.exports = { mapOrder, toDateString };
+const Order = mongoose.model("Order", orderSchema);
+
+module.exports = Order;

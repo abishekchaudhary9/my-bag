@@ -68,4 +68,5 @@ module.exports = {
     serviceAccount: firebaseServiceAccount,
   },
   database,
+  mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/maison_db",
 };

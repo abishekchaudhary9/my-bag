@@ -1,4 +1,4 @@
-const pool = require("../config/database");
+const mongoose = require("mongoose");
 
 function healthCheck(req, res) {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -6,24 +6,25 @@ function healthCheck(req, res) {
 
 async function databaseHealthCheck(req, res) {
   try {
-    await pool.query("SELECT 1");
-    const [usersTable] = await pool.query("SHOW TABLES LIKE 'users'");
-    const [productsTable] = await pool.query("SHOW TABLES LIKE 'products'");
+    const status = mongoose.connection.readyState;
+    const states = {
+      0: "disconnected",
+      1: "connected",
+      2: "connecting",
+      3: "disconnecting",
+    };
 
     res.json({
-      status: "ok",
-      database: "connected",
-      tables: {
-        users: usersTable.length > 0,
-        products: productsTable.length > 0,
-      },
+      status: status === 1 ? "ok" : "warning",
+      database: "mongodb",
+      connection: states[status],
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({
       status: "error",
       database: "unavailable",
-      code: err.code || "UNKNOWN",
+      message: err.message,
       timestamp: new Date().toISOString(),
     });
   }

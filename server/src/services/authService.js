@@ -1,9 +1,8 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const pool = require("../config/database");
+const User = require("../models/userModel");
 const env = require("../config/env");
 const { getFirebaseAuth } = require("../config/firebase");
-const { mapUser } = require("../models/userModel");
 const createHttpError = require("../utils/httpError");
 const { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } = require("../utils/validation");
 const { emitEvent } = require("../lib/socket");
@@ -12,7 +11,7 @@ const { loginAlertTemplate, welcomeTemplate } = require("../utils/emailTemplates
 
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    { id: user.id || user._id, email: user.email, role: user.role },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn }
   );
@@ -24,11 +23,9 @@ function firebaseOnlyError() {
 
 function parseName(displayName, fallbackFirst = "Maison", fallbackLast = "Customer") {
   const parts = String(displayName || "").trim().split(/\s+/).filter(Boolean);
-
   if (parts.length === 0) {
     return { firstName: fallbackFirst, lastName: fallbackLast };
   }
-
   return {
     firstName: parts[0],
     lastName: parts.slice(1).join(" ") || fallbackLast,
@@ -88,53 +85,43 @@ async function loginWithFirebase({ idToken, profile, ip, userAgent }) {
     throw createHttpError(400, "Enter a valid Nepal mobile number.");
   }
 
-  let rows = [];
-  [rows] = await pool.query("SELECT * FROM users WHERE firebase_uid = ?", [decoded.uid]);
+  let user = await User.findOne({ 
+    $or: [
+      { firebase_uid: decoded.uid },
+      { email: email || { $exists: false } },
+      { phone: phone || { $exists: false } }
+    ]
+  });
 
-  if (rows.length === 0 && email) {
-    [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-  }
-
-  if (rows.length === 0 && phone) {
-    [rows] = await pool.query("SELECT * FROM users WHERE phone = ?", [phone]);
-  }
-
-  if (rows.length > 0) {
-    const existing = rows[0];
-    const nextEmail = email || existing.email || dbEmail;
-    const nextFirstName = firstName || existing.first_name;
-    const nextLastName = lastName || existing.last_name;
-
+  if (user) {
     const isPhoneAuth = dbEmail.includes("phone.maison.local");
-    const isVerified = decoded.email_verified ? 1 : (existing.email_verified ? 1 : (isPhoneAuth ? 1 : 0));
+    const isVerified = decoded.email_verified || user.email_verified || isPhoneAuth;
 
-    await pool.query(
-      `UPDATE users
-       SET firebase_uid = ?, email = ?, first_name = ?, last_name = ?, role = ?, 
-           phone = COALESCE(?, phone), avatar = COALESCE(?, avatar), email_verified = ?,
-           street = COALESCE(?, street), city = COALESCE(?, city), state = COALESCE(?, state), 
-           zip = COALESCE(?, zip), country = COALESCE(?, country)
-       WHERE id = ?`,
-      [
-        decoded.uid, nextEmail, nextFirstName, nextLastName, role, 
-        phone, avatar, isVerified,
-        profile.street || null, profile.city || null, profile.state || null,
-        profile.zip || null, profile.country || null,
-        existing.id
-      ]
-    );
+    user.firebase_uid = decoded.uid;
+    user.email = email || user.email || dbEmail;
+    user.first_name = firstName || user.first_name;
+    user.last_name = lastName || user.last_name;
+    user.role = role;
+    if (phone) user.phone = phone;
+    if (avatar) user.avatar = avatar;
+    user.email_verified = isVerified;
+    
+    if (profile.street) user.street = profile.street;
+    if (profile.city) user.city = profile.city;
+    if (profile.state) user.state = profile.state;
+    if (profile.zip) user.zip = profile.zip;
+    if (profile.country) user.country = profile.country;
 
-    const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [existing.id]);
-    const updatedUser = updatedRows[0];
+    await user.save();
 
-    // Security Alert: Notify user of new login
-    if (updatedUser.email && !updatedUser.email.includes("phone.maison.local")) {
+    // Security Alert
+    if (user.email && !user.email.includes("phone.maison.local")) {
       sendEmail({
-        to: updatedUser.email,
+        to: user.email,
         subject: "Security Alert: New Sign-in to Maison",
         html: loginAlertTemplate({
-          name: updatedUser.first_name,
-          email: updatedUser.email,
+          name: user.first_name,
+          email: user.email,
           ip: ip || "Unknown",
           userAgent: userAgent || "Unknown Device",
           date: new Date().toLocaleString("en-US", { timeZone: "Asia/Kathmandu" }) + " (NPT)"
@@ -142,140 +129,141 @@ async function loginWithFirebase({ idToken, profile, ip, userAgent }) {
       }).catch(err => console.error("Login Alert Email Failed:", err));
     }
 
-    return { user: mapUser(updatedUser), token: signToken(updatedUser) };
+    return { user: user.toJSON(), token: signToken(user) };
   }
 
-  const [result] = await pool.query(
-    `INSERT INTO users (firebase_uid, email, password_hash, first_name, last_name, role, phone, avatar, street, city, state, zip, country, email_verified)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      decoded.uid, dbEmail, `firebase:${decoded.uid}`, firstName, lastName, role, 
-      phone, avatar, 
-      profile.street || null, profile.city || null, profile.state || null, 
-      profile.zip || null, profile.country || null,
-      decoded.email_verified ? 1 : 0
-    ]
-  );
+  // Create new user
+  user = new User({
+    firebase_uid: decoded.uid,
+    email: dbEmail,
+    password_hash: `firebase:${decoded.uid}`,
+    first_name: firstName,
+    last_name: lastName,
+    role,
+    phone,
+    avatar,
+    street: profile.street || null,
+    city: profile.city || null,
+    state: profile.state || null,
+    zip: profile.zip || null,
+    country: profile.country || null,
+    email_verified: decoded.email_verified || false
+  });
 
-  const [createdRows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
-  const createdUser = createdRows[0];
+  await user.save();
   
-  // Real-time: Notify admins of new customer
-  emitEvent("admins", "new_customer", { customerId: result.insertId, name: `${firstName} ${lastName}` });
+  // Real-time: Notify admins
+  emitEvent("admins", "new_customer", { customerId: user._id, name: `${firstName} ${lastName}` });
   
-  // Security Alert & Welcome: Notify user of new account/login
-  if (createdUser.email && !createdUser.email.includes("phone.maison.local")) {
-    // 1. Send Welcome Email
+  // Welcome & Security
+  if (user.email && !user.email.includes("phone.maison.local")) {
     sendEmail({
-      to: createdUser.email,
+      to: user.email,
       subject: "Welcome to Maison",
-      html: welcomeTemplate({ name: createdUser.first_name })
+      html: welcomeTemplate({ name: user.first_name })
     }).catch(err => console.error("Welcome Email Failed:", err));
-
-    // 2. Send Security Alert
-    sendEmail({
-      to: createdUser.email,
-      subject: "Security Alert: New Sign-in to Maison",
-      html: loginAlertTemplate({
-        name: createdUser.first_name,
-        email: createdUser.email,
-        ip: ip || "Unknown",
-        userAgent: userAgent || "Unknown Device",
-        date: new Date().toLocaleString("en-US", { timeZone: "Asia/Kathmandu" }) + " (NPT)"
-      })
-    }).catch(err => console.error("Login Alert Email Failed:", err));
   }
 
-  // For phone users or verified emails, we return a token immediately
   const isPhoneAuth = dbEmail.includes("phone.maison.local");
-  const isVerified = createdUser.email_verified || isPhoneAuth;
-  const token = isVerified ? signToken(createdUser) : null;
-  return { user: mapUser(createdUser), token };
+  const isVerified = user.email_verified || isPhoneAuth;
+  const token = isVerified ? signToken(user) : null;
+  return { user: user.toJSON(), token };
 }
 
 async function findEmailByPhone({ phone }) {
   if (!phone || !isValidNepalPhone(phone)) {
     throw createHttpError(400, "Enter a valid Nepal mobile number.");
   }
-
   const formattedPhone = formatNepalPhone(phone);
-  const [rows] = await pool.query("SELECT email FROM users WHERE phone = ? LIMIT 1", [formattedPhone]);
-  if (rows.length === 0 || /^phone-[^@]+@phone\.maison\.local$/i.test(rows[0].email)) {
+  const user = await User.findOne({ phone: formattedPhone }).select("email");
+  
+  if (!user || /^phone-[^@]+@phone\.maison\.local$/i.test(user.email)) {
     throw createHttpError(404, "No email account is linked to this phone number.");
   }
 
-  return { email: rows[0].email };
+  return { email: user.email };
 }
 
 async function getCurrentUser(userId) {
-  const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [userId]);
-  if (rows.length === 0) {
+  const user = await User.findById(userId);
+  if (!user) {
     throw createHttpError(404, "User not found");
   }
-  return mapUser(rows[0]);
+  return user.toJSON();
 }
 
 async function updateProfile(userId, profile) {
   const { firstName, lastName, email, phone, street, city, state, zip, country } = profile;
   const formattedPhone = phone ? formatNepalPhone(phone) : phone;
 
-  let normalizedEmail = null;
   if (email) {
-    normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
     if (!isValidEmail(normalizedEmail)) {
       throw createHttpError(400, "Enter a valid email address.");
     }
-
-    const [existing] = await pool.query("SELECT id FROM users WHERE email = ? AND id <> ?", [normalizedEmail, userId]);
-    if (existing.length > 0) {
+    const existing = await User.findOne({ email: normalizedEmail, _id: { $ne: userId } });
+    if (existing) {
       throw createHttpError(409, "An account with this email already exists.");
     }
+    profile.email = normalizedEmail;
   }
 
-  if (profile.phone && !isValidNepalPhone(profile.phone)) {
+  if (phone && !isValidNepalPhone(phone)) {
     throw createHttpError(400, "Enter a valid Nepal mobile number.");
   }
 
-  await pool.query(
-    `UPDATE users SET email = COALESCE(?, email), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name),
-     phone = COALESCE(?, phone), street = COALESCE(?, street), city = COALESCE(?, city),
-     state = COALESCE(?, state), zip = COALESCE(?, zip), country = COALESCE(?, country) WHERE id = ?`,
-    [normalizedEmail, firstName, lastName, formattedPhone, street, city, state, zip, country || DEFAULT_COUNTRY, userId]
-  );
-  return getCurrentUser(userId);
+  const updates = {
+    email: profile.email,
+    first_name: firstName,
+    last_name: lastName,
+    phone: formattedPhone,
+    street,
+    city,
+    state,
+    zip,
+    country: country || DEFAULT_COUNTRY
+  };
+
+  // Remove undefined/nulls to avoid overwriting with COALESCE style
+  Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+
+  const user = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true });
+  if (!user) throw createHttpError(404, "User not found");
+  
+  return user.toJSON();
 }
 
 async function updatePassword(userId, { currentPassword, newPassword }) {
   if (!currentPassword || !newPassword) {
     throw createHttpError(400, "Both current and new password required.");
   }
-
   if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
     throw createHttpError(400, "Password must be at least 8 characters and include one uppercase letter and one number.");
   }
 
-  const [rows] = await pool.query("SELECT password_hash FROM users WHERE id = ?", [userId]);
-  if (rows.length === 0) {
-    throw createHttpError(404, "User not found");
-  }
+  const user = await User.findById(userId).select("password_hash");
+  if (!user) throw createHttpError(404, "User not found");
 
-  if (String(rows[0].password_hash || "").startsWith("firebase:")) {
+  if (String(user.password_hash || "").startsWith("firebase:")) {
     throw createHttpError(400, "Use Firebase to change this password.");
   }
 
-  const valid = await bcrypt.compare(currentPassword, rows[0].password_hash);
+  const valid = await bcrypt.compare(currentPassword, user.password_hash);
   if (!valid) {
     throw createHttpError(401, "Current password is incorrect.");
   }
 
   const hash = await bcrypt.hash(newPassword, 10);
-  await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [hash, userId]);
+  user.password_hash = hash;
+  await user.save();
+  
   return { message: "Password updated successfully." };
 }
 
 async function updateAvatar(userId, avatarUrl) {
-  await pool.query("UPDATE users SET avatar = ? WHERE id = ?", [avatarUrl, userId]);
-  return getCurrentUser(userId);
+  const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true });
+  if (!user) throw createHttpError(404, "User not found");
+  return user.toJSON();
 }
 
 module.exports = {
