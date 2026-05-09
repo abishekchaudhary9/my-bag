@@ -137,7 +137,7 @@ export default function Header() {
             )}
 
             {/* User Account - Visible on mobile with new style */}
-            <div className="relative group">
+
               <button
                 onClick={() => {
                   if (!authState.isAuthenticated) navigate("/login");
@@ -150,53 +150,8 @@ export default function Header() {
               >
                 <User className="h-5 w-5" strokeWidth={1.5} />
               </button>
-              <AnimatePresence>
-                {showUserMenu && authState.isAuthenticated && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute -right-4 sm:right-0 mt-3 w-64 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-2 origin-top-right z-50 overflow-hidden"
-                  >
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="py-3 px-4 border-b border-border/50 mb-1"
-                    >
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
-                      <div className="text-sm font-medium truncate">{authState.user?.email}</div>
-                    </motion.div>
 
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      {isAdmin ? (
-                        <Link to="/admin" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors rounded-lg">
-                          <Shield className="h-4 w-4" /> Admin Panel
-                        </Link>
-                      ) : (
-                        <Link to="/profile" onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors rounded-lg">
-                          <User className="h-4 w-4" /> My Profile
-                        </Link>
-                      )}
-                    </motion.div>
 
-                    <motion.button
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 }}
-                      onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
-                    >
-                      <LogOut className="h-4 w-4" /> Sign Out
-                    </motion.button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
 
             {!isAdmin && (
               <Link to="/cart" aria-label="Cart" className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
@@ -287,7 +242,7 @@ export default function Header() {
                 </button>
               </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </motion.header>
 
