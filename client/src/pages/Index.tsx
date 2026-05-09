@@ -118,9 +118,10 @@ const Index = () => {
       </section>
       {/* CATEGORIES - BENTO GRID */}
       <motion.section 
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
+        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 1, ease: "easeOut" }}
         className="container-luxe py-24 md:py-32"
       >
         <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
@@ -245,9 +246,10 @@ const Index = () => {
         </motion.div>
         <div className="container-luxe text-white text-center z-20">
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2 }}
+            initial={{ opacity: 0, y: 50, filter: "blur(8px)" }}
+            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
             className="max-w-4xl mx-auto"
           >
             <div className="eyebrow text-white/60 mb-6">Our Philosophy</div>
@@ -263,9 +265,10 @@ const Index = () => {
 
       {/* NEWSLETTER */}
       <motion.section 
-        initial={{ opacity: 0, y: 50 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 0, y: 50, filter: "blur(10px)" }}
+        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 1, ease: "easeOut" }}
         className="container-luxe py-32 text-center"
       >
         <div className="max-w-3xl mx-auto">

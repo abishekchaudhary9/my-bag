@@ -271,10 +271,11 @@ export default function Header() {
                 </button>
               </motion.div>
 
-              <div className="flex-1 overflow-y-auto no-scrollbar">
+              <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ delay: 0.2, duration: 0.8 }}
                   className="p-8 pb-4 space-y-6"
                 >
@@ -319,9 +320,10 @@ export default function Header() {
                   {nav.map((item, i) => (
                     <motion.div
                       key={item.label}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.05, duration: 0.6 }}
+                      initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
+                      whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                      viewport={{ once: true, margin: "-10%" }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
                     >
                       <Link
                         to={item.to}
@@ -338,9 +340,10 @@ export default function Header() {
               </div>
 
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
+              initial={{ opacity: 0, y: 20, filter: "blur(4px)" }}
+              whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
               className="p-8 border-t border-border bg-secondary/5"
             >
               <div className="flex items-center justify-between mb-8">
