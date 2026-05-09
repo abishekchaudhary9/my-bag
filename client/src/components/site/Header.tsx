@@ -50,9 +50,9 @@ export default function Header() {
       >
         <div className="container-luxe flex items-center justify-between w-full h-full relative">
           {/* LEFT: Menu & Search */}
-          <div className="flex items-center gap-1 sm:gap-2 z-10">
+          <div className="flex items-center gap-0.5 sm:gap-2 z-10">
             <button
-              className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm lg:hidden flex items-center justify-center"
+              className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm lg:hidden flex items-center justify-center"
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open Menu"
             >
@@ -61,16 +61,16 @@ export default function Header() {
             <button
             aria-label="Search"
             onClick={() => setIsSearchOpen(true)}
-            className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
+            className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
           >
-            <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
+            <Search className="h-5 w-5" strokeWidth={1.5} />
           </button>
           </div>
 
           {/* CENTER: Logo - Absolutely centered for symmetry */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
             <motion.div 
-              className="font-display text-2xl sm:text-3xl tracking-tighter cursor-pointer py-1"
+              className="font-display text-xl sm:text-3xl tracking-tight cursor-pointer py-1"
               whileTap={{ scale: 0.98 }}
               onClick={() => {
                 // We keep the click logic but the animation is the focus
@@ -99,12 +99,12 @@ export default function Header() {
           </div>
 
           {/* RIGHT: Essential Utilities */}
-          <div className="flex items-center gap-1 sm:gap-2 z-10">
+          <div className="flex items-center gap-0.5 sm:gap-2 z-10">
             <div className="hidden lg:flex items-center gap-2">
               <ThemeToggle />
               {canUseWishlist && (
                 <Link to="/wishlist" aria-label="Wishlist" className={`${iconButtonClass} relative`}>
-                  <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  <Heart className="h-5 w-5" strokeWidth={1.5} />
                   {state.wishlist.length > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[10px] flex items-center justify-center font-medium">
                       {state.wishlist.length}
@@ -126,11 +126,11 @@ export default function Header() {
                       markAllNotificationsRead();
                     }
                   }}
-                  className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center relative group"
+                  className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center relative group"
                 >
                   <Bell className="h-5 w-5" strokeWidth={1.5} />
                   {authState.unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
                       {authState.unreadCount > 9 ? '9+' : authState.unreadCount}
                     </span>
                   )}
@@ -199,7 +199,7 @@ export default function Header() {
                     setShowNotifications(false);
                   }
                 }}
-                className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
+                className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
               >
                 <User className="h-5 w-5" strokeWidth={1.5} />
               </button>
@@ -252,7 +252,7 @@ export default function Header() {
             </div>
 
             {!isAdmin && (
-              <Link to="/cart" aria-label="Cart" className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
+              <Link to="/cart" aria-label="Cart" className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
                 <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
                 {totals.count > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-foreground text-background text-[10px] flex items-center justify-center font-medium">

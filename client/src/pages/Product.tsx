@@ -155,7 +155,7 @@ export default function ProductPage() {
           <div className="lg:col-span-5 lg:sticky lg:top-32 lg:self-start space-y-10">
             <div className="space-y-4">
               <div className="eyebrow">{product.category} · Handcrafted</div>
-              <h1 className="font-display text-5xl md:text-6xl tracking-tighter leading-[0.95]">{product.name}</h1>
+              <h1 className="font-display text-3xl md:text-6xl tracking-tighter leading-[0.95]">{product.name}</h1>
               <p className="text-xl text-muted-foreground font-light italic opacity-80">{product.tagline}</p>
             </div>
 
