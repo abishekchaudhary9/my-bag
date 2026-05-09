@@ -20,11 +20,12 @@ const nav = [
 
 export default function Header() {
   const { state, totals } = useStore();
-  const { state: authState, isAdmin, logout } = useAuth();
+  const { state: authState, isAdmin, logout, markAllNotificationsRead } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [q, setQ] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
   const headerRef = useRef(null);
 
@@ -113,12 +114,90 @@ export default function Header() {
               )}
             </div>
 
+            {/* Notifications */}
+            {authState.isAuthenticated && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    const next = !showNotifications;
+                    setShowNotifications(next);
+                    setShowUserMenu(false);
+                    if (next && authState.unreadCount > 0) {
+                      markAllNotificationsRead();
+                    }
+                  }}
+                  className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center relative group"
+                >
+                  <Bell className="h-5 w-5" strokeWidth={1.5} />
+                  {authState.unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
+                      {authState.unreadCount > 9 ? '9+' : authState.unreadCount}
+                    </span>
+                  )}
+                </button>
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-80 bg-background/90 dark:bg-secondary/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl origin-top-right z-50 overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                        <div className="text-[10px] font-bold uppercase tracking-widest">Notifications</div>
+                        {authState.unreadCount > 0 && (
+                          <button 
+                            onClick={() => { /* Handle mark all read */ }} 
+                            className="text-[9px] uppercase tracking-widest text-accent hover:underline"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-[400px] overflow-y-auto no-scrollbar">
+                        {authState.notifications.length === 0 ? (
+                          <div className="py-12 text-center text-xs text-muted-foreground italic">No new notifications</div>
+                        ) : (
+                          authState.notifications.slice(0, 5).map((n) => (
+                            <div 
+                              key={n.id} 
+                              className={`p-4 border-b border-border/30 last:border-0 hover:bg-white/5 transition-colors cursor-pointer ${!n.is_read ? 'bg-accent/5' : ''}`}
+                              onClick={() => {
+                                if (n.link) navigate(n.link);
+                                setShowNotifications(false);
+                              }}
+                            >
+                              <div className="font-medium text-xs mb-1">{n.title}</div>
+                              <div className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</div>
+                              <div className="text-[9px] text-muted-foreground/50 mt-2 uppercase tracking-tight">
+                                {new Date(n.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <Link 
+                        to="/profile?tab=notifications" 
+                        onClick={() => setShowNotifications(false)}
+                        className="block py-3 text-center text-[10px] uppercase tracking-widest font-bold border-t border-border/50 hover:bg-white/5 transition-colors"
+                      >
+                        View All Activity
+                      </Link>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
             {/* User Account - Visible on mobile with new style */}
             <div className="relative group">
               <button
                 onClick={() => {
                   if (!authState.isAuthenticated) navigate("/login");
-                  else setShowUserMenu(!showUserMenu);
+                  else {
+                    setShowUserMenu(!showUserMenu);
+                    setShowNotifications(false);
+                  }
                 }}
                 className="p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
               >

@@ -245,6 +245,16 @@ function ChartTooltip({ active, payload, label }: any) {
 
 type Tab = "dashboard" | "products" | "orders" | "customers" | "feedback" | "notifications" | "coupons";
 
+const TABS_CONFIG: { key: Tab; label: string; icon: any }[] = [
+  { key: "dashboard", label: "Dashboard", icon: BarChart3 },
+  { key: "products", label: "Products", icon: Package },
+  { key: "orders", label: "Orders", icon: ShoppingBag },
+  { key: "customers", label: "Customers", icon: Users },
+  { key: "feedback", label: "Feedback", icon: TrendingUp },
+  { key: "notifications", label: "Notifications", icon: AlertTriangle },
+  { key: "coupons", label: "Coupons", icon: DollarSign },
+];
+
 /* ─── Main Admin Page ──────────────────────────────────── */
 export default function Admin() {
   const { state, isAdmin } = useAuth();
@@ -254,7 +264,7 @@ export default function Admin() {
 
   // Sync tab with URL
   useEffect(() => {
-    if (tabParam && tabs.some(t => t.key === tabParam) && tabParam !== tab) {
+    if (tabParam && TABS_CONFIG.some(t => t.key === tabParam) && tabParam !== tab) {
       setTab(tabParam);
     }
   }, [tabParam]);
@@ -263,30 +273,6 @@ export default function Admin() {
     setTab(newTab);
     setSearchParams({ tab: newTab });
   };
-
-  // Auto-scroll and highlight when deep linking
-  useEffect(() => {
-    const id = searchParams.get("id");
-    const type = searchParams.get("type");
-    
-    if (id && tab === "feedback") {
-      const elementId = `feedback-${type}-${id}`;
-      // Small delay to ensure items are rendered
-      const timer = setTimeout(() => {
-        const element = document.getElementById(elementId);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-          element.classList.add("ring-2", "ring-accent", "ring-offset-8");
-          setTimeout(() => element.classList.remove("ring-2", "ring-accent", "ring-offset-8"), 5000);
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-    
-    if (id && tab === "orders") {
-      setOrderSearch(id);
-    }
-  }, [tab, searchParams]);
 
   /* Data states */
   const [stats, setStats] = useState<any>(null);
@@ -316,6 +302,34 @@ export default function Admin() {
   const [deleteTargetQuestion, setDeleteTargetQuestion] = useState<any | null>(null);
   const [editReviewTarget, setEditReviewTarget] = useState<any | null>(null);
   const [editQuestionTarget, setEditQuestionTarget] = useState<any | null>(null);
+  const [replyReviewTarget, setReplyReviewTarget] = useState<any | null>(null);
+  const [replyQuestionTarget, setReplyQuestionTarget] = useState<any | null>(null);
+
+  // Auto-scroll and highlight when deep linking (Hash or Search Params)
+  useEffect(() => {
+    const idParam = searchParams.get("id");
+    const typeParam = searchParams.get("type");
+    const hashId = window.location.hash.replace("#", "");
+    
+    const targetId = hashId || (idParam ? `feedback-${typeParam}-${idParam}` : null);
+    
+    if (targetId) {
+      // Small delay to ensure items are rendered
+      const timer = setTimeout(() => {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add("ring-2", "ring-accent", "ring-offset-[12px]", "bg-secondary/30");
+          setTimeout(() => element.classList.remove("ring-2", "ring-accent", "ring-offset-[12px]", "bg-secondary/30"), 5000);
+        }
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+    
+    if (idParam && tab === "orders") {
+      setOrderSearch(idParam);
+    }
+  }, [tab, searchParams, feedback, orders]);
 
   /* ─── Data fetching ─────────────────────────────────── */
   const fetchStats = useCallback(async () => {
@@ -413,7 +427,16 @@ export default function Admin() {
             handleTabChange(targetTab);
             if (id) {
               if (targetTab === "orders") setOrderSearch(id);
-              // For feedback/products we could add more logic
+              if (targetTab === "feedback") {
+                setTimeout(() => {
+                  const element = document.getElementById(id);
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "center" });
+                    element.classList.add("ring-2", "ring-accent", "ring-offset-[12px]", "bg-secondary/30");
+                    setTimeout(() => element.classList.remove("ring-2", "ring-accent", "ring-offset-[12px]", "bg-secondary/30"), 4000);
+                  }
+                }, 500);
+              }
             }
           }
         },
@@ -434,13 +457,13 @@ export default function Admin() {
     });
 
     ioSocket.on("new_review", (data: any) => {
-      notifyAdmin("New Review", `New review for ${data?.productName || 'a product'}.`, "feedback");
+      notifyAdmin("New Review", `New review for ${data?.productName || 'a product'}.`, "feedback", `feedback-review-${data?.id}`);
       fetchFeedback();
       fetchNotifications();
     });
 
     ioSocket.on("new_question", (data: any) => {
-      notifyAdmin("New Question", `Customer asked a question about ${data?.productName || 'a product'}.`, "feedback");
+      notifyAdmin("New Question", `Customer asked a question about ${data?.productName || 'a product'}.`, "feedback", `feedback-question-${data?.id}`);
       fetchFeedback();
       fetchNotifications();
     });
@@ -559,15 +582,7 @@ export default function Admin() {
   };
 
   /* ─── Tab config ────────────────────────────────────── */
-  const tabs: { key: Tab; label: string; icon: any }[] = [
-    { key: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { key: "products", label: "Products", icon: Package },
-    { key: "orders", label: "Orders", icon: ShoppingBag },
-    { key: "customers", label: "Customers", icon: Users },
-    { key: "feedback", label: "Feedback", icon: TrendingUp },
-    { key: "notifications", label: "Notifications", icon: AlertTriangle },
-    { key: "coupons", label: "Coupons", icon: DollarSign },
-  ];
+  const tabs = TABS_CONFIG;
 
   /* ─── Calculations ──────────────────────────────────── */
   const filteredProducts = useMemo(() => productList.filter((p) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())), [productList, searchQ]);
@@ -1194,7 +1209,12 @@ export default function Admin() {
                       </div>
                       <div className="text-sm text-foreground/80 mb-3">{r.text}</div>
                       <div className="flex gap-4 items-center">
-                        <Link to={`/product/${r.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Reply</Link>
+                        <button 
+                          onClick={() => setReplyReviewTarget(r)}
+                          className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors"
+                        >
+                          Reply
+                        </button>
                         <button 
                           onClick={() => setEditReviewTarget(r)}
                           className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
@@ -1233,7 +1253,12 @@ export default function Admin() {
                         </div>
                       </div>
                       <div className="flex gap-4 items-center mt-2">
-                        <Link to={`/product/${q.productSlug}`} className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors inline-block">Go to Product to Answer</Link>
+                        <button 
+                          onClick={() => setReplyQuestionTarget(q)}
+                          className="text-xs uppercase tracking-wider bg-foreground text-background px-4 py-1.5 hover:bg-accent transition-colors"
+                        >
+                          Answer
+                        </button>
                         <button 
                           onClick={() => setEditQuestionTarget(q)}
                           className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
@@ -1467,6 +1492,36 @@ export default function Admin() {
             fetchFeedback();
           }}
           onClose={() => setEditQuestionTarget(null)}
+        />
+      )}
+      {replyReviewTarget && (
+        <PromptModal
+          title="Reply to Review"
+          label="Atelier Response"
+          defaultValue=""
+          confirmLabel="Post Reply"
+          onConfirm={async (text) => {
+            await reviewsApi.reply(replyReviewTarget.id, { reply: text });
+            toast.success("Reply sent");
+            setReplyReviewTarget(null);
+            fetchFeedback();
+          }}
+          onClose={() => setReplyReviewTarget(null)}
+        />
+      )}
+      {replyQuestionTarget && (
+        <PromptModal
+          title="Answer Question"
+          label="Atelier Answer"
+          defaultValue=""
+          confirmLabel="Post Answer"
+          onConfirm={async (text) => {
+            await questionsApi.answer(replyQuestionTarget.id, { answer: text });
+            toast.success("Answer sent");
+            setReplyQuestionTarget(null);
+            fetchFeedback();
+          }}
+          onClose={() => setReplyQuestionTarget(null)}
         />
       )}
       {showAddCoupon && (

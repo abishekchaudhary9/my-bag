@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Package, Truck, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import Layout from "@/components/site/Layout";
-import { adminApi } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -9,6 +9,18 @@ export default function TrackOrder() {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<any>(null);
+  const { socket } = useAuth();
+
+  const fetchOrder = async (trk: string) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/track/${trk}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Order not found");
+      setOrder(data.order);
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,21 +28,24 @@ export default function TrackOrder() {
 
     setLoading(true);
     setOrder(null);
-    try {
-      // We'll use a public tracking endpoint (which we need to create on the server)
-      // For now, let's assume we have one or use the admin one if the user is admin
-      // But we want a public one. I'll create it.
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/track/${trackingNumber.trim()}`);
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.error || "Order not found");
-      setOrder(data.order);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
+    await fetchOrder(trackingNumber.trim());
+    setLoading(false);
   };
+
+  useEffect(() => {
+    if (!socket || !order?.order_number) return;
+
+    const onUpdate = (data: any) => {
+      if (data.orderNumber === order.order_number) {
+        fetchOrder(trackingNumber.trim());
+      }
+    };
+
+    socket.on("order_update", onUpdate);
+    return () => {
+      socket.off("order_update", onUpdate);
+    };
+  }, [socket, order?.order_number, trackingNumber]);
 
   return (
     <Layout>

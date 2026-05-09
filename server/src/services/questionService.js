@@ -53,7 +53,7 @@ async function createQuestion(userId, productId, { text }) {
         admin.id,
         "New Product Question",
         `A customer asked a question about the ${productInfo[0].name}.`,
-        `/admin?tab=feedback&type=question&id=${questionId}`
+        `/admin?tab=feedback#feedback-question-${questionId}`
       );
     }
   }
@@ -75,7 +75,7 @@ async function answerQuestion(user, questionId, { answer }) {
   await pool.query("UPDATE product_questions SET admin_answer = ? WHERE id = ?", [answer, questionId]);
 
   const [questionData] = await pool.query(
-    `SELECT q.user_id, p.slug, p.name
+    `SELECT q.user_id, q.product_id, p.slug, p.name
      FROM product_questions q
      JOIN products p ON q.product_id = p.id
      WHERE q.id = ?`,
@@ -87,7 +87,7 @@ async function answerQuestion(user, questionId, { answer }) {
       questionData[0].user_id,
       "Question Answered",
       `Maison has answered your question about the ${questionData[0].name}.`,
-      `/product/${questionData[0].slug}`
+      `/product/${questionData[0].slug}#question-${questionId}`
     );
   }
 

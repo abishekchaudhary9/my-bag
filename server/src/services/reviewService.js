@@ -124,7 +124,7 @@ async function createReview(userId, productId, { rating, title, body }) {
         admin.id,
         "New Product Review",
         `A customer left a review for the ${productInfo[0].name}.`,
-        `/admin?tab=feedback&type=review&id=${reviewId}`
+        `/admin?tab=feedback#feedback-review-${reviewId}`
       );
     }
   }
@@ -146,7 +146,7 @@ async function replyToReview(user, reviewId, reply) {
   await pool.query("UPDATE product_reviews SET admin_reply = ? WHERE id = ?", [reply, reviewId]);
 
   const [reviewData] = await pool.query(
-    `SELECT r.user_id, p.slug, p.name
+    `SELECT r.user_id, r.product_id, p.slug, p.name
      FROM product_reviews r
      JOIN products p ON r.product_id = p.id
      WHERE r.id = ?`,
@@ -158,7 +158,7 @@ async function replyToReview(user, reviewId, reply) {
       reviewData[0].user_id,
       "Review Reply",
       `Maison has replied to your review of the ${reviewData[0].name}.`,
-      `/product/${reviewData[0].slug}`
+      `/product/${reviewData[0].slug}#review-${reviewId}`
     );
   }
 

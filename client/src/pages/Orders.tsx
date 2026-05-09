@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Package, Truck, Check, X, Eye, CheckCircle2, Circle } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useAuth } from "@/context/AuthContext";
+import { resolveAssetUrl } from "@/lib/api";
 
 const STATUS_MAP = {
   processing: { color: "bg-amber-500", label: "Processing", icon: Package },
@@ -135,7 +136,7 @@ export default function Orders() {
                       <div key={i} className="flex items-center gap-3 bg-secondary/40 px-3 py-2">
                         <div className="h-10 w-10 bg-secondary flex-shrink-0 grid place-items-center">
                           {item.image ? (
-                            <img src={item.image} alt="" className="h-full w-full object-cover" />
+                            <img src={resolveAssetUrl(item.image)} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <Package className="h-4 w-4 text-muted-foreground" strokeWidth={1} />
                           )}

@@ -15,7 +15,7 @@ import {
   updateProfile as updateFirebaseProfile,
   sendEmailVerification,
 } from "firebase/auth";
-import { authApi, ordersApi, setToken } from "@/lib/api";
+import { authApi, ordersApi, notificationsApi, setToken } from "@/lib/api";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 import {
@@ -203,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchNotifications = useCallback(async () => {
     if (!state.isAuthenticated) return;
     try {
-      const { notifications } = await authApi.notifications();
+      const { notifications } = await notificationsApi.get();
       dispatch({ type: "SET_NOTIFICATIONS", notifications });
     } catch {
       return;
@@ -220,10 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const exchangeFirebaseUserWithSocket = useCallback(async (profile?: any) => {
-    const { user, token } = await exchangeFirebaseUser(profile);
-    
-    // Initialize Socket
+  const initSocket = useCallback(() => {
     if (!socket) {
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const socketUrl = apiBase.replace(/\/api$/, "");
@@ -233,9 +230,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         transports: ["websocket", "polling"]
       });
     }
+    return socket;
+  }, []);
 
+  const exchangeFirebaseUserWithSocket = useCallback(async (profile?: any) => {
+    const { user, token } = await exchangeFirebaseUser(profile);
+    initSocket();
     return { user, token };
-  }, []); // No dependencies needed for basic initialization
+  }, [initSocket]);
 
   const finishFirebaseLogin = useCallback(async (
     profile?: { firstName?: string; lastName?: string; phone?: string }
@@ -259,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token) {
         try {
           const { user } = await authApi.me();
+          initSocket();
           if (active) dispatch({ type: "LOGIN", user });
           return;
         } catch {
@@ -307,12 +310,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [exchangeFirebaseUserWithSocket]);
 
   useEffect(() => {
-    if (state.isAuthenticated && state.user?.role !== "admin") {
-      ordersApi.list()
-        .then(({ orders }) => dispatch({ type: "SET_ORDERS", orders }))
-        .catch(() => undefined);
+    if (state.isAuthenticated) {
+      if (state.user?.role !== "admin") {
+        ordersApi.list()
+          .then(({ orders }) => dispatch({ type: "SET_ORDERS", orders }))
+          .catch(() => undefined);
+      }
       
-      authApi.notifications()
+      notificationsApi.get()
         .then(({ notifications }) => dispatch({ type: "SET_NOTIFICATIONS", notifications }))
         .catch(() => undefined);
     }
