@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Package, Heart, MapPin, Settings, LogOut, Camera, Shield, Bell, Eye, ChevronDown } from "lucide-react";
+import { User, Package, Heart, MapPin, Settings, LogOut, Camera, Shield, Bell, Eye, ChevronDown, Trash2 } from "lucide-react";
 import Layout from "@/components/site/Layout";
 import { useAuth, type User as AuthUser } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
@@ -12,7 +12,7 @@ import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } fr
 type Tab = "overview" | "settings" | "addresses" | "security";
 
 export default function Profile() {
-  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin, updateAvatar } = useAuth();
+  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin, updateAvatar, deleteAvatar } = useAuth();
   const { state: storeState } = useStore();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
@@ -106,11 +106,25 @@ export default function Profile() {
         <div className="flex flex-wrap items-center gap-6">
           <div className="h-20 w-20 rounded-full bg-gradient-ink text-background grid place-items-center font-display text-2xl flex-shrink-0 relative group overflow-hidden shadow-xl border border-border/50">
             {user.avatar ? (
-              <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+              <>
+                <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+                <button 
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (confirm("Remove profile picture?")) {
+                      await deleteAvatar();
+                    }
+                  }}
+                  className="absolute top-1 right-1 h-6 w-6 bg-destructive text-white rounded-full grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
+                  title="Remove picture"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </>
             ) : (
               initials
             )}
-            <label className="absolute inset-0 bg-foreground/60 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <label className="absolute inset-0 bg-foreground/40 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
               <Camera className="h-5 w-5" strokeWidth={1.5} />
               <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
             </label>

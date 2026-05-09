@@ -34,4 +34,10 @@ router.post(
   asyncHandler(uploadController.uploadAvatar)
 );
 
+router.delete(
+  "/avatar",
+  authenticate,
+  asyncHandler(uploadController.deleteAvatar)
+);
+
 module.exports = router;

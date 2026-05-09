@@ -260,6 +260,7 @@ export const uploadsApi = {
     formData.append("image", file);
     return uploadRequest<{ user: any; image: { url: string; publicId: string } }>("/uploads/avatar", formData);
   },
+  deleteAvatar: () => request<{ user: any }>("/uploads/avatar", { method: "DELETE" }),
 };
 
 export const ordersApi = {

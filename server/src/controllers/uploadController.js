@@ -13,4 +13,9 @@ async function uploadAvatar(req, res) {
   res.status(200).json({ user, image });
 }
 
-module.exports = { uploadImage, uploadAvatar };
+async function deleteAvatar(req, res) {
+  const user = await authService.updateAvatar(req.user.id, null);
+  res.status(200).json({ user });
+}
+
+module.exports = { uploadImage, uploadAvatar, deleteAvatar };

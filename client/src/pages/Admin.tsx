@@ -55,7 +55,7 @@ import { toast } from "sonner";
 
 /* ─── Admin Layout ─────────────────────────────────────── */
 function AdminLayout({ children, notificationCount, onBellClick }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void }) {
-  const { state, logout, updateAvatar } = useAuth();
+  const { state, logout, updateAvatar, deleteAvatar } = useAuth();
   const navigate = useNavigate();
   const handleLogout = () => { logout(); toast.success("Signed out"); navigate("/"); };
 
@@ -65,6 +65,15 @@ function AdminLayout({ children, notificationCount, onBellClick }: { children: R
     const lt = toast.loading("Updating avatar...");
     try {
       await updateAvatar(file);
+    } catch (err) {}
+    toast.dismiss(lt);
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!confirm("Remove profile picture?")) return;
+    const lt = toast.loading("Removing avatar...");
+    try {
+      await deleteAvatar();
     } catch (err) {}
     toast.dismiss(lt);
   };
@@ -99,11 +108,20 @@ function AdminLayout({ children, notificationCount, onBellClick }: { children: R
               <div className="hidden sm:flex items-center gap-3">
                 <div className="relative group h-9 w-9 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden border border-border">
                   {state.user?.avatar ? (
-                    <img src={state.user.avatar} alt="" className="h-full w-full object-cover" />
+                    <>
+                      <img src={state.user.avatar} alt="" className="h-full w-full object-cover" />
+                      <button 
+                        onClick={(e) => { e.preventDefault(); handleAvatarDelete(); }}
+                        className="absolute top-0 right-0 h-4 w-4 bg-destructive text-white rounded-full grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
+                        title="Remove picture"
+                      >
+                        <Trash2 className="h-2 w-2" />
+                      </button>
+                    </>
                   ) : (
                     <User className="h-4 w-4" strokeWidth={1.5} />
                   )}
-                  <label className="absolute inset-0 bg-foreground/60 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <label className="absolute inset-0 bg-foreground/40 text-background grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                     <Camera className="h-3 w-3" strokeWidth={1.5} />
                     <input 
                       type="file" 

@@ -153,6 +153,7 @@ type AuthCtx = {
   fetchNotifications: () => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   updateAvatar: (file: File) => Promise<void>;
+  deleteAvatar: () => Promise<void>;
   socket: Socket | null;
   isAdmin: boolean;
 };
@@ -631,6 +632,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.success("Profile picture updated");
       } catch (err: any) {
         toast.error(err.message || "Failed to update profile picture");
+        throw err;
+      }
+    },
+    deleteAvatar: async () => {
+      try {
+        const { user } = await import("@/lib/api").then(m => m.uploadsApi.deleteAvatar());
+        dispatch({ type: "UPDATE_PROFILE", updates: user });
+        toast.success("Profile picture removed");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to remove profile picture");
         throw err;
       }
     },
