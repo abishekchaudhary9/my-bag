@@ -185,11 +185,11 @@ export default function Checkout() {
                 <div className="eyebrow mb-4 text-accent">Checkout</div>
                 <h1 className="font-display text-5xl md:text-7xl tracking-tighter">Finalize Order</h1>
               </div>
-              <div className="flex items-center gap-10">
+              <div className="flex items-center gap-4 md:gap-10 overflow-x-auto no-scrollbar pb-2 snap-x">
                 {STEPS.map((s, i) => (
-                  <div key={s.key} className="flex items-center gap-4 group">
-                    <div className={`h-12 w-12 rounded-full border flex items-center justify-center transition-all duration-700 ${i <= stepIndex ? 'border-accent bg-accent text-background' : 'border-border text-muted-foreground'}`}>
-                      {i < stepIndex ? <Check className="h-5 w-5" /> : <s.icon className="h-4 w-4" />}
+                  <div key={s.key} className="flex items-center gap-2 md:gap-4 group shrink-0 snap-start">
+                    <div className={`h-10 w-10 md:h-12 md:w-12 rounded-full border flex items-center justify-center transition-all duration-700 ${i <= stepIndex ? 'border-accent bg-accent text-background' : 'border-border text-muted-foreground'}`}>
+                      {i < stepIndex ? <Check className="h-4 w-4 md:h-5 md:w-5" /> : <s.icon className="h-3 w-3 md:h-4 md:w-4" />}
                     </div>
                     <div className="hidden md:block">
                       <div className={`text-[10px] font-bold uppercase tracking-widest ${i <= stepIndex ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</div>

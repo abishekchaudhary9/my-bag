@@ -164,30 +164,31 @@ export default function CartPage() {
 
 function Row({ item, onRemove, onQty, onSave, saved = false }: { item: CartItem; onRemove: () => void; onQty: (q: number) => void; onSave: () => void; saved?: boolean }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] gap-8 group">
+    <div className="grid grid-cols-[80px_1fr] sm:grid-cols-[120px_1fr] gap-4 sm:gap-8 group">
       <div className="aspect-[4/5] bg-secondary overflow-hidden">
         <img src={item.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="" />
       </div>
       <div className="flex flex-col justify-between py-1">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start gap-2">
           <div className="space-y-1">
-            <h3 className="font-display text-2xl tracking-tight">{item.name}</h3>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{item.color} · {item.size}</div>
+            <h3 className="font-display text-xl sm:text-2xl tracking-tight leading-none">{item.name}</h3>
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{item.color} · {item.size}</div>
           </div>
-          <div className="text-xl font-medium">Rs {item.price * item.qty}</div>
+          <div className="text-lg sm:text-xl font-medium shrink-0">Rs {item.price * item.qty}</div>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center glass">
-            <button onClick={() => onQty(Math.max(1, item.qty - 1))} className="p-3 hover:bg-secondary transition-colors" disabled={saved}><Minus className="h-3 w-3" strokeWidth={1.5} /></button>
-            <span className="w-8 text-center text-xs font-bold">{item.qty}</span>
-            <button onClick={() => onQty(item.qty + 1)} className="p-3 hover:bg-secondary transition-colors" disabled={saved}><Plus className="h-3 w-3" strokeWidth={1.5} /></button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 sm:mt-0">
+          <div className="flex items-center glass self-start">
+            <button onClick={() => onQty(Math.max(1, item.qty - 1))} className="p-2 sm:p-3 hover:bg-secondary transition-colors" disabled={saved}><Minus className="h-3 w-3" strokeWidth={1.5} /></button>
+            <span className="w-6 sm:w-8 text-center text-xs font-bold">{item.qty}</span>
+            <button onClick={() => onQty(item.qty + 1)} className="p-2 sm:p-3 hover:bg-secondary transition-colors" disabled={saved}><Plus className="h-3 w-3" strokeWidth={1.5} /></button>
           </div>
-          <div className="flex items-center gap-6">
-            <button onClick={onSave} className="text-[10px] font-bold uppercase tracking-[0.2em] link-underline">{saved ? "Move to Bag" : "Save for Later"}</button>
-            <button onClick={onRemove} className="text-[10px] font-bold uppercase tracking-[0.2em] text-destructive/60 hover:text-destructive transition-colors">Remove</button>
+          <div className="flex items-center gap-4 sm:gap-6 self-start sm:self-auto">
+            <button onClick={onSave} className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] link-underline">{saved ? "Move to Bag" : "Save for Later"}</button>
+            <button onClick={onRemove} className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-destructive/60 hover:text-destructive transition-colors">Remove</button>
           </div>
         </div>
       </div>
     </div>
+
   );
 }
