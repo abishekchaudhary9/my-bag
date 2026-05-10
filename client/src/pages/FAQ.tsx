@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 
 const FAQ_DATA = [
   { cat: "Orders & Shipping", items: [
@@ -64,3 +64,4 @@ export default function FAQ() {
     </Layout>
   );
 }
+

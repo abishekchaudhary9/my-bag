@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Mail, MessageSquare, Phone } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
@@ -294,3 +294,4 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
     </button>
   );
 }
+

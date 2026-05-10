@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, Plus } from "lucide-react";
 import { motion } from "framer-motion";
@@ -15,7 +15,7 @@ interface ProductCardProps {
   index: number;
 }
 
-export default function ProductCard({ product, index }: ProductCardProps) {
+const ProductCard = React.memo(React.forwardRef<HTMLElement, ProductCardProps>(({ product, index }, ref) => {
   const { addToCart, toggleWish, isWished } = useStore();
   const { state: authState, isAdmin } = useAuth();
   const [color, setColor] = useState(product.colors?.[0] || { name: "Default", hex: "#000000", image: "" });
@@ -39,13 +39,14 @@ export default function ProductCard({ product, index }: ProductCardProps) {
 
   return (
     <motion.article
+      ref={ref}
       initial={{ opacity: 0, y: 30, filter: "blur(8px)" }}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.8, delay: index * 0.05, ease: "easeOut" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative"
+      className="group relative will-change-scroll"
     >
       <Link to={`/product/${product.slug}`} className="block relative aspect-[4/5] overflow-hidden bg-secondary">
         {(product.colors || []).map((c) => (
@@ -54,7 +55,7 @@ export default function ProductCard({ product, index }: ProductCardProps) {
             src={resolveAssetUrl(c.image)}
             alt={`${product.name} in ${c.name}`}
             loading="lazy"
-            className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 ease-luxe ${
+            className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 ease-luxe will-change-transform ${
               c.name === color.name ? "opacity-100 scale-100" : "opacity-0 scale-110"
             } ${isHovered ? "scale-105" : "scale-100"}`}
           />
@@ -119,7 +120,10 @@ export default function ProductCard({ product, index }: ProductCardProps) {
       </div>
     </motion.article>
   );
-}
+}));
+
+export default ProductCard;
+
 
 function Tag({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "accent" }) {
   return (
@@ -132,3 +136,4 @@ function Tag({ children, tone = "default" }: { children: React.ReactNode; tone?:
     </span>
   );
 }
+

@@ -1,18 +1,18 @@
 const adminService = require("../services/adminService");
 
 async function getStats(req, res) {
-  const stats = await adminService.getStats();
-  res.json({ stats });
+  const result = await adminService.getStats();
+  res.json(result);
 }
 
 async function listOrders(req, res) {
-  const orders = await adminService.listOrders(req.query.status);
-  res.json({ orders });
+  const result = await adminService.listOrders(req.query.status);
+  res.json(result);
 }
 
 async function getOrderDetails(req, res) {
-  const order = await adminService.getOrderDetails(req.params.orderNumber);
-  res.json({ order });
+  const result = await adminService.getOrderDetails(req.params.orderNumber);
+  res.json(result);
 }
 
 async function updateOrder(req, res) {

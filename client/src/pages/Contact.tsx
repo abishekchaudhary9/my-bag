@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { contactApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -54,3 +54,4 @@ export default function Contact() {
     </Layout>
   );
 }
+

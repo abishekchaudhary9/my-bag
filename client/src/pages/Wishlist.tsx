@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import ProductCard from "@/components/shop/ProductCard";
 import { Product, products } from "@/data/products";
 import { useStore } from "@/context/StoreContext";
@@ -254,3 +254,4 @@ export default function Wishlist() {
     </Layout>
   );
 }
+

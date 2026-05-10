@@ -1,5 +1,6 @@
 const Notification = require("../models/notificationModel");
 const createHttpError = require("../utils/httpError");
+const { emitEvent } = require("../lib/socket");
 
 async function listNotifications(userId) {
   const notifications = await Notification.find({ user: userId }).sort({ created_at: -1 });
@@ -50,7 +51,8 @@ async function clearAllNotifications(userId) {
   return { message: "All notifications cleared" };
 }
 
-async function createNotification(userId, data) {
+async function createNotification(userId, data, options = {}) {
+  const { emit = true, skipToast = false } = options;
   const notification = new Notification({
     user: userId,
     title: data.title,
@@ -58,6 +60,20 @@ async function createNotification(userId, data) {
     link: data.link
   });
   await notification.save();
+
+  if (emit) {
+    // Real-time: Notify the specific user
+    emitEvent(`user_${userId}`, "notification", {
+      id: String(notification._id),
+      title: data.title,
+      message: data.message,
+      link: data.link,
+      isRead: false,
+      createdAt: notification.created_at,
+      skipToast
+    });
+  }
+
   return notification;
 }
 

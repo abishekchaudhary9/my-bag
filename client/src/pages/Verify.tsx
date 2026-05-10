@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, RefreshCw, ShieldCheck, MessageSquare } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -136,3 +136,4 @@ export default function Verify() {
     </Layout>
   );
 }
+

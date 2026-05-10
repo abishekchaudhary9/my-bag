@@ -92,3 +92,4 @@ export function ProfileSettingsForm({ user, onUpdate }: ProfileSettingsProps) {
     </form>
   );
 }
+

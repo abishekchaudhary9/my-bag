@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight, Check, Phone, MapPin, Building, Hash, MessageSquare } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { isValidEmail } from "@/lib/validation";
@@ -537,3 +537,4 @@ export default function Signup() {
     </Layout>
   );
 }
+

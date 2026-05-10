@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import ProductCard from "@/components/shop/ProductCard"; // v1.0.1
 import { categories, products as localProducts, Category } from "@/data/products";
 import { productsApi } from "@/lib/api";

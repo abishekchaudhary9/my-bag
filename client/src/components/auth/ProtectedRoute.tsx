@@ -28,3 +28,4 @@ export function ProtectedRoute({ children, adminOnly = false }: { children: Reac
 
   return <>{children}</>;
 }
+

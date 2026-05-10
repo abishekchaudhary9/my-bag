@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Minus, Plus, X, Truck, ShieldCheck, ShoppingBag, ArrowRight } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useStore, CartItem } from "@/context/StoreContext";
 import { useState } from "react";
 import { toast } from "sonner";

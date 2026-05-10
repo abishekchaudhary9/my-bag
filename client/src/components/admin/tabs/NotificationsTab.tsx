@@ -40,13 +40,13 @@ export function NotificationsTab({
                 {notifications.map((n) => (
                   <tr key={n.id} className="border-b border-border/50">
                     <td className="py-3">
-                      <div className="font-medium">{(n.first_name || n.last_name) ? `${n.first_name || ""} ${n.last_name || ""}` : "System User"}</div>
-                      <div className="text-xs text-muted-foreground">{n.user_email || "System"}</div>
+                      <div className="font-medium">{n.userName || "System User"}</div>
+                      <div className="text-xs text-muted-foreground">{n.title || "System"}</div>
                     </td>
                     <td className="py-3 font-medium">{n.title}</td>
                     <td className="py-3 text-muted-foreground max-w-xs truncate">{n.message}</td>
                     <td className="py-3 text-right text-xs text-muted-foreground">
-                      {n.created_at ? new Date(n.created_at).toLocaleString() : "N/A"}
+                      {n.createdAt ? new Date(n.createdAt).toLocaleString() : "N/A"}
                     </td>
                     <td className="py-3 text-right">
                       {n.link && (
@@ -54,7 +54,7 @@ export function NotificationsTab({
                           onClick={async () => {
                             if (!n.link) return;
                             
-                            if (!n.is_read) {
+                            if (!n.isRead) {
                               notificationsApi.markRead(n.id)
                                 .then(() => fetchNotifications())
                                 .catch(err => console.error("Mark read failed:", err));
@@ -91,3 +91,4 @@ export function NotificationsTab({
     </div>
   );
 }
+

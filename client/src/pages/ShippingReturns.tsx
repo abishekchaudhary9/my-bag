@@ -1,4 +1,4 @@
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { Truck, RotateCcw, Clock, Globe } from "lucide-react";
 
 const SHIPPING_INFO = [
@@ -56,3 +56,4 @@ export default function ShippingReturns() {
     </Layout>
   );
 }
+

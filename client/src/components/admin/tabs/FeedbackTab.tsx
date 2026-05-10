@@ -63,7 +63,7 @@ export function FeedbackTab({
                       {[...Array(5)].map((_, i) => <Smile key={i} className={`h-3 w-3 ${i < r.rating ? "fill-current" : "opacity-20"}`} />)}
                     </div>
                   </div>
-                  <p className="text-sm text-foreground/80 mb-4">"{r.text}"</p>
+                  <p className="text-sm text-foreground/80 mb-4">"{r.body}"</p>
                   <div className="flex gap-4">
                     <button onClick={() => setReplyReviewTarget(r)} className="text-[10px] uppercase tracking-widest font-bold text-accent hover:opacity-80">Reply</button>
                     <button 
@@ -73,7 +73,7 @@ export function FeedbackTab({
                         btn.innerText = "Summarizing...";
                         btn.disabled = true;
                         try {
-                          const { summary } = await aiApi.summarize(r.text);
+                          const { summary } = await aiApi.summarize(r.body);
                           toast.success(summary, { duration: 6000 });
                         } catch (err: any) {
                           toast.error(err.message || "Summarization failed");
@@ -145,3 +145,4 @@ export function FeedbackTab({
     </div>
   );
 }
+

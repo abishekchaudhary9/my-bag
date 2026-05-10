@@ -74,7 +74,6 @@
   
   html {
     -webkit-font-smoothing: antialiased;
-    scroll-behavior: smooth;
   }
 
   body {
@@ -195,6 +194,12 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .will-change-scroll {
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
 }
 

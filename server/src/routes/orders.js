@@ -10,5 +10,6 @@ router.post("/khalti-initiate", authenticate, asyncHandler(orderController.initi
 router.get("/track/:trackingNumber", asyncHandler(orderController.trackOrder));
 router.get("/", authenticate, asyncHandler(orderController.listOrders));
 router.get("/:orderNumber", authenticate, asyncHandler(orderController.getOrder));
+router.post("/verify-payment", authenticate, asyncHandler(orderController.verifyPayment));
 
 module.exports = router;

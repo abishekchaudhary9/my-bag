@@ -61,10 +61,10 @@ function reducer(state: State, action: Action): State {
       return {
         ...initial,
         ...action.state,
-        cart: (action.state.cart || []).map(normalizeCartItem),
-        saved: (action.state.saved || []).map(normalizeCartItem),
-        wishlist: (action.state.wishlist || []).map(productId),
-        wishlistItems: (action.state.wishlistItems || []).map(normalizeProduct),
+        cart: (Array.isArray(action.state.cart) ? action.state.cart : []).map(normalizeCartItem),
+        saved: (Array.isArray(action.state.saved) ? action.state.saved : []).map(normalizeCartItem),
+        wishlist: (Array.isArray(action.state.wishlist) ? action.state.wishlist : []).map(productId),
+        wishlistItems: (Array.isArray(action.state.wishlistItems) ? action.state.wishlistItems : []).map(normalizeProduct),
       };
     case "ADD": {
       const k = itemKey(action.item);
@@ -329,3 +329,4 @@ export function useStore() {
   if (!ctx) throw new Error("useStore must be used inside StoreProvider");
   return ctx;
 }
+

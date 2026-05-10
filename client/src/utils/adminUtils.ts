@@ -20,3 +20,4 @@ export const getInitials = (name = "") => name
   .join("")
   .slice(0, 2)
   .toUpperCase();
+

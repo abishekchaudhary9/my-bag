@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CreditCard, Lock, Truck, ChevronLeft, ChevronRight, ShieldCheck, Check, MapPin, Banknote } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { ordersApi } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_COUNTRY, formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
 import { motion, AnimatePresence } from "framer-motion";
+import LocationPicker from "@/components/shop/LocationPicker";
+
 
 type Step = "shipping" | "payment" | "review";
 const STEPS: { key: Step; label: string; icon: any }[] = [
@@ -40,7 +42,12 @@ export default function Checkout() {
     state: authState.user?.address?.state ?? "",
     zip: authState.user?.address?.zip ?? "",
     country: authState.user?.address?.country ?? DEFAULT_COUNTRY,
+    lat: (authState.user?.address as any)?.lat ?? 27.7172,
+    lng: (authState.user?.address as any)?.lng ?? 85.3240,
+    municipality: (authState.user?.address as any)?.municipality ?? "",
+    ward: (authState.user?.address as any)?.ward ?? "",
   });
+
 
   const [payment, setPayment] = useState({ method: "khalti" as "khalti" | "esewa" | "cod" });
   const stepIndex = STEPS.findIndex((s) => s.key === step);
@@ -51,8 +58,8 @@ export default function Checkout() {
   };
 
   const validateShipping = () => {
-    if (!shipping.firstName.trim() || !shipping.lastName.trim() || !shipping.street.trim() || !shipping.city.trim()) {
-      toast.error("Please complete your delivery address.");
+    if (!shipping.firstName.trim() || !shipping.lastName.trim() || !shipping.street.trim() || !shipping.municipality.trim()) {
+      toast.error("Please complete your delivery address and select a municipality.");
       return false;
     }
     if (!isValidEmail(shipping.email)) {
@@ -66,6 +73,7 @@ export default function Checkout() {
     return true;
   };
 
+
   const handlePlaceOrder = async () => {
     setLoading(true);
     try {
@@ -75,7 +83,13 @@ export default function Checkout() {
         shipping: totals.shipping,
         discount: totals.discount,
         total: totals.total,
-        shippingInfo: { ...shipping, phone: formatNepalPhone(shipping.phone), country: shipping.country || DEFAULT_COUNTRY },
+        shippingInfo: { 
+          ...shipping, 
+          phone: formatNepalPhone(shipping.phone), 
+          country: shipping.country || DEFAULT_COUNTRY,
+          coordinates: { lat: shipping.lat, lng: shipping.lng }
+        },
+
         paymentMethod: payment.method,
       };
 
@@ -220,16 +234,39 @@ export default function Checkout() {
                         <Input label="Phone" value={shipping.phone} onChange={e => setShipping({...shipping, phone: e.target.value})} type="tel" />
                      </div>
                    </div>
-                   <div className="space-y-8">
-                     <div className="eyebrow pb-6 border-b border-border/50">Delivery Address</div>
-                     <div className="grid md:grid-cols-2 gap-6">
-                        <Input label="First Name" value={shipping.firstName} onChange={e => setShipping({...shipping, firstName: e.target.value})} />
-                        <Input label="Last Name" value={shipping.lastName} onChange={e => setShipping({...shipping, lastName: e.target.value})} />
-                        <div className="md:col-span-2"><Input label="Street" value={shipping.street} onChange={e => setShipping({...shipping, street: e.target.value})} /></div>
-                        <Input label="City" value={shipping.city} onChange={e => setShipping({...shipping, city: e.target.value})} />
-                        <Input label="Province" value={shipping.state} onChange={e => setShipping({...shipping, state: e.target.value})} />
-                     </div>
-                   </div>
+                    <div className="space-y-8">
+                      <div className="eyebrow pb-6 border-b border-border/50">Delivery Address</div>
+                      <div className="grid md:grid-cols-2 gap-6">
+                         <Input label="First Name" value={shipping.firstName} onChange={(e: any) => setShipping({...shipping, firstName: e.target.value})} />
+                         <Input label="Last Name" value={shipping.lastName} onChange={(e: any) => setShipping({...shipping, lastName: e.target.value})} />
+                         <div className="md:col-span-2">
+                           <Input label="House No / Landmark / Street" value={shipping.street} onChange={(e: any) => setShipping({...shipping, street: e.target.value})} />
+                         </div>
+                      </div>
+                      
+                      <div className="pt-4">
+                        <LocationPicker 
+                          initialData={{
+                            province: shipping.state,
+                            district: shipping.city,
+                            municipality: shipping.municipality,
+                            ward: shipping.ward,
+                            lat: shipping.lat,
+                            lng: shipping.lng
+                          }}
+                          onChange={(data) => setShipping({
+                            ...shipping,
+                            state: data.province,
+                            city: data.district,
+                            municipality: data.municipality,
+                            ward: data.ward,
+                            lat: data.lat,
+                            lng: data.lng
+                          })}
+                        />
+                      </div>
+                    </div>
+
                    <div className="pt-10 flex justify-end">
                      <button onClick={() => { if(validateShipping()) handleStepChange("payment"); }} className="bg-foreground text-background h-16 px-16 text-[11px] font-bold uppercase tracking-[0.3em] hover:bg-accent transition-all duration-500">Continue to Payment</button>
                    </div>
@@ -268,7 +305,12 @@ export default function Checkout() {
                    <div className="grid md:grid-cols-2 gap-10">
                      <div className="space-y-4">
                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shipping To</div>
-                       <p className="text-sm font-light leading-relaxed">{shipping.firstName} {shipping.lastName}<br/>{shipping.street}<br/>{shipping.city}, {shipping.state}</p>
+                        <p className="text-sm font-light leading-relaxed">
+                          {shipping.firstName} {shipping.lastName}<br/>
+                          {shipping.street}, Ward {shipping.ward}<br/>
+                          {shipping.municipality}, {shipping.city}<br/>
+                          {shipping.state}
+                        </p>
                      </div>
                      <div className="space-y-4">
                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Payment Method</div>
@@ -319,3 +361,4 @@ export default function Checkout() {
     </Layout>
   );
 }
+

@@ -5,7 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import ProductCard from "@/components/shop/ProductCard"; // v1.0.1
 import { categories, products } from "@/data/products";
 import heroBag from "@/assets/hero-bag.jpg";
@@ -21,38 +21,45 @@ const Index = () => {
   const y = useTransform(scrollY, [1000, 3000], [-100, 100]);
 
   useGSAP(() => {
-    // Parallax effect for hero image
-    gsap.to(".hero-image", {
-      yPercent: 20,
-      ease: "none",
-      scrollTrigger: {
-        trigger: ".hero-section",
-        start: "top top",
-        end: "bottom top",
-        scrub: true,
-      },
-    });
+    let mm = gsap.matchMedia();
 
-    // Staggered reveal for section titles
-    gsap.utils.toArray(".reveal-text").forEach((text: any) => {
-      gsap.from(text, {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: "power4.out",
+    mm.add("(min-width: 1024px)", () => {
+      // Parallax effect for hero image - Desktop Only
+      gsap.to(".hero-image", {
+        yPercent: 20,
+        ease: "none",
         scrollTrigger: {
-          trigger: text,
-          start: "top 85%",
+          trigger: ".hero-section",
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
         },
       });
+
+      // Staggered reveal for section titles - Desktop Only
+      gsap.utils.toArray(".reveal-text").forEach((text: any) => {
+        gsap.from(text, {
+          y: 50,
+          opacity: 0,
+          duration: 1,
+          ease: "power4.out",
+          scrollTrigger: {
+            trigger: text,
+            start: "top 85%",
+          },
+        });
+      });
     });
+
+    // Cleanup matchMedia
+    return () => mm.revert();
   }, { scope: container });
 
   return (
     <div ref={container}>
       <Layout>
         {/* HERO */}
-        <section className="relative bg-gradient-warm hero-section">
+        <section className="relative bg-gradient-warm hero-section will-change-scroll">
           <div className="container-luxe grid lg:grid-cols-12 gap-10 lg:gap-16 pt-12 md:pt-20 pb-20 lg:pb-32 items-end overflow-hidden">
           <motion.div 
             initial={{ opacity: 0, x: -100 }}
@@ -97,7 +104,7 @@ const Index = () => {
                 alt="The Atelier backpack in cognac leather"
                 width={1600}
                 height={1280}
-                className="h-full w-full object-cover hero-image"
+                className="h-full w-full object-cover hero-image will-change-transform"
               />
               <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between z-10">
                 <div className="bg-background/90 backdrop-blur-xl border border-white/20 px-6 py-4 shadow-2xl transition-transform duration-500 hover:-translate-y-1">
@@ -122,7 +129,7 @@ const Index = () => {
         whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 1, ease: "easeOut" }}
-        className="container-luxe py-24 md:py-32"
+        className="container-luxe py-24 md:py-32 will-change-scroll"
       >
         <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
           <div className="max-w-2xl">
@@ -232,7 +239,7 @@ const Index = () => {
       </section>
 
       {/* PHILOSOPHY - CINEMATIC SECTION */}
-      <section className="relative h-[80vh] flex items-center overflow-hidden bg-black">
+      <section className="relative h-[80vh] flex items-center overflow-hidden bg-black will-change-scroll">
         <motion.div 
           style={{ y }}
           className="absolute inset-0 -z-10"
@@ -295,3 +302,4 @@ const Index = () => {
 };
 
 export default Index;
+

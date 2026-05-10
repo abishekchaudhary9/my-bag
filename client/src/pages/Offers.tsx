@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Tag, Copy, Check, ChevronDown, ChevronUp, Info } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { couponsApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -103,3 +103,4 @@ export default function Offers() {
     </Layout>
   );
 }
+

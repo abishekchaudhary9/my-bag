@@ -25,8 +25,7 @@ import {
   isFirebaseConfigured,
 } from "@/lib/firebase";
 import { formatNepalPhone, isValidEmail, isValidNepalPhone } from "@/lib/validation";
-
-const ADMIN_EMAILS = ["abishekc441@gmail.com"]; // Frontend hint for faster UI response
+import { ADMIN_EMAILS } from "@/constants/auth";
 
 export type UserRole = "user" | "admin";
 
@@ -51,7 +50,7 @@ export type User = {
 
 export type Order = {
   id: string;
-  date: string;
+  createdAt: string;
   status: "processing" | "shipped" | "delivered" | "cancelled";
   items: { name: string; color: string; size: string; qty: number; price: number; image: string }[];
   subtotal: number;
@@ -99,16 +98,18 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
       return { ...state, orders: action.orders };
     case "ADD_ORDER":
       return { ...state, orders: [action.order, ...state.orders] };
-    case "SET_NOTIFICATIONS":
+    case "SET_NOTIFICATIONS": {
+      const safeNotifications = Array.isArray(action.notifications) ? action.notifications : [];
       return { 
         ...state, 
-        notifications: action.notifications, 
-        unreadCount: action.notifications.filter((n: any) => !n.is_read).length 
+        notifications: safeNotifications, 
+        unreadCount: safeNotifications.filter((n: any) => !n.isRead).length 
       };
+    }
     case "MARK_NOTIFICATIONS_READ":
       return { 
         ...state, 
-        notifications: state.notifications.map(n => ({ ...n, is_read: 1 })),
+        notifications: state.notifications.map(n => ({ ...n, isRead: true })),
         unreadCount: 0
       };
     case "SET_LOADING":
@@ -152,6 +153,7 @@ type AuthCtx = {
   verifyOtp: (email: string, code: string) => AuthResult;
   fetchNotifications: () => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
   updateAvatar: (file: File) => Promise<void>;
   deleteAvatar: () => Promise<void>;
   socket: Socket | null;
@@ -217,6 +219,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.markNotificationsRead();
       dispatch({ type: "MARK_NOTIFICATIONS_READ" });
+    } catch {
+      return;
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    if (!state.isAuthenticated) return;
+    try {
+      await notificationsApi.markRead(id);
+      dispatch({ 
+        type: "SET_NOTIFICATIONS", 
+        notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n) 
+      });
     } catch {
       return;
     }
@@ -344,26 +359,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     socket.on("connect", onConnect);
 
     socket.on("notification", (data) => {
-      toast.info(data.title, {
-        description: data.message,
-      });
+      if (!data.skipToast) {
+        toast.info(data.title, {
+          description: data.message,
+        });
+      }
       fetchNotifications();
     });
 
     socket.on("order_update", (data) => {
-      toast.info(`Order Status Updated`, { 
-        description: `Order #${data.orderNumber} is now ${data.status}.` 
+      toast.info(`Order Status Updated`, {
+        description: `Order #${data.orderNumber} is now ${data.status}.`,
       });
       fetchOrders();
       fetchNotifications();
     });
 
     socket.on("new_order", (data) => {
-      toast.success(`New Order Received!`, { 
-        description: `A new order has been placed (#${data.orderId}).` 
-      });
       if (state.user?.role === "admin") {
-        fetchOrders(); 
+        toast.success(`New Order Received!`, {
+          description: `Order #${data.orderNumber} has been placed.`,
+        });
+        fetchOrders();
+        fetchNotifications();
+      } else {
+        toast.success(`Order Confirmed!`, {
+          description: `Your order #${data.orderNumber} has been placed successfully.`,
+        });
       }
     });
 
@@ -625,6 +647,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchOrders,
     fetchNotifications,
     markAllNotificationsRead,
+    markNotificationRead,
     updateAvatar: async (file: File) => {
       try {
         const { user } = await uploadsApi.avatar(file);
@@ -695,3 +718,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
+

@@ -1,4 +1,4 @@
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 
 export default function Account() {
   return (

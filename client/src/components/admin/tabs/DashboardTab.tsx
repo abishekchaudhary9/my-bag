@@ -223,7 +223,7 @@ export function DashboardTab({
                       <td className="py-3 font-medium">{o.id}</td>
                       <td className="py-3">
                         <div className="font-medium">{o.customer}</div>
-                        <div className="max-w-[210px] truncate text-xs text-muted-foreground">{o.customerEmail || o.date}</div>
+                        <div className="max-w-[210px] truncate text-xs text-muted-foreground">{o.customerEmail || new Date(o.createdAt).toLocaleDateString()}</div>
                       </td>
                       <td className="py-3">{o.total}</td>
                       <td className="py-3"><StatusPill status={o.status} /></td>
@@ -274,3 +274,4 @@ export function DashboardTab({
     </div>
   );
 }
+

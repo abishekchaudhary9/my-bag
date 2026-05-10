@@ -20,25 +20,34 @@ export default function Footer() {
           </div>
 
           <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-10">
-            <FooterCol title="Collections" links={[
-              ["Handbags", "/shop?category=handbags"],
-              ["Backpacks", "/shop?category=backpacks"],
-              ["Travel", "/shop?category=travel"],
-              ["Accessories", "/shop"],
-            ]} />
-            <FooterCol title="The House" links={[
-              ["Our Story", "/about"],
-              ["The Journal", "/journal"],
-              ["Atelier Service", "/contact"],
-              ["Sustainability", "/about"],
-            ]} />
-            <FooterCol title="Support" links={[
-              ["Track Your Order", "/track"],
-              ["Shipping & Returns", "/shipping-returns"],
-              ["Size Guide", "/size-guide"],
-              ["Contact Us", "/contact"],
-              ["Privacy Policy", "/privacy"],
-            ]} />
+            <FooterCol
+              title="Collections"
+              links={[
+                ["Handbags", "/shop?category=handbags"],
+                ["Backpacks", "/shop?category=backpacks"],
+                ["Travel", "/shop?category=travel"],
+                ["Accessories", "/shop"],
+              ]}
+            />
+            <FooterCol
+              title="The House"
+              links={[
+                ["Our Story", "/about"],
+                ["The Journal", "/journal"],
+                ["Atelier Service", "/contact"],
+                ["Sustainability", "/about"],
+              ]}
+            />
+            <FooterCol
+              title="Support"
+              links={[
+                ["Track Your Order", "/track"],
+                ["Shipping & Returns", "/shipping-returns"],
+                ["Size Guide", "/size-guide"],
+                ["Contact Us", "/contact"],
+                ["Privacy Policy", "/privacy"],
+              ]}
+            />
           </div>
         </div>
 
@@ -47,13 +56,17 @@ export default function Footer() {
             © {new Date().getFullYear()} Maison Atelier · Handcrafted in Florence
           </div>
           <div className="flex items-center gap-10">
-             <div className="flex gap-6">
-               <Link to="/terms" className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Terms</Link>
-               <Link to="/privacy" className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Privacy</Link>
-             </div>
-             <div className="scale-90 origin-right">
-               <ThemeToggle />
-             </div>
+            <div className="flex gap-6">
+              <Link to="/terms" className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">
+                Terms
+              </Link>
+              <Link to="/privacy" className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">
+                Privacy
+              </Link>
+            </div>
+            <div className="scale-90 origin-right">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </div>
@@ -86,3 +99,4 @@ function SocialLink({ icon, href }: { icon: React.ReactNode; href: string }) {
     </a>
   );
 }
+

@@ -6,7 +6,7 @@ async function validateCoupon(req, res) {
 }
 
 async function listActiveCoupons(req, res) {
-  const coupons = await couponService.listActiveCoupons();
+  const coupons = await couponService.listCoupons();
   res.json({ coupons });
 }
 

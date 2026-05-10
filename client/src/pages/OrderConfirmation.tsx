@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Check, Package, ArrowRight, Printer, Copy } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { ordersApi } from "@/lib/api";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
@@ -12,16 +13,22 @@ export default function OrderConfirmation() {
   const order = state.orders.find((o) => o.id === orderId);
 
   useEffect(() => {
-    // If we're coming back from eSewa success (q=su or token) or Khalti success (q=khalti & status=Completed)
-    if (
-      searchParams.get("q") === "su" || 
-      searchParams.get("token") || 
-      (searchParams.get("q") === "khalti" && searchParams.get("status") === "Completed")
-    ) {
-      toast.success("Payment verified successfully!");
-      fetchOrders();
+    const q = searchParams.get("q");
+    const pidx = searchParams.get("pidx");
+    const status = searchParams.get("status");
+
+    if (order && ((q === "khalti" && pidx && status === "Completed") || q === "su")) {
+      const method = q === "khalti" ? "khalti" : "esewa";
+      ordersApi.verifyPayment(order.id, pidx || "", method)
+        .then(() => {
+          toast.success("Payment verified successfully!");
+          fetchOrders();
+        })
+        .catch(() => {
+          toast.error("Payment verification failed. Please contact support.");
+        });
     }
-  }, [searchParams, fetchOrders]);
+  }, [searchParams, fetchOrders, order]);
 
   useEffect(() => {
     if (!socket || !orderId) return;
@@ -102,7 +109,7 @@ export default function OrderConfirmation() {
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Date</div>
-                <div className="text-sm">{new Date(order.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>
+                <div className="text-sm">{new Date(order.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Status</div>
@@ -188,3 +195,4 @@ export default function OrderConfirmation() {
     </Layout>
   );
 }
+

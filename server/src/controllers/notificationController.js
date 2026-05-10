@@ -6,12 +6,12 @@ async function listNotifications(req, res) {
 }
 
 async function markNotificationRead(req, res) {
-  const result = await notificationService.markNotificationRead(req.user.id, req.params.id);
+  const result = await notificationService.markAsRead(req.user.id, req.params.id);
   res.json(result);
 }
 
 async function markAllNotificationsRead(req, res) {
-  const result = await notificationService.markAllNotificationsRead(req.user.id);
+  const result = await notificationService.markAllAsRead(req.user.id);
   res.json(result);
 }
 
@@ -21,7 +21,7 @@ async function deleteNotification(req, res) {
 }
 
 async function clearNotifications(req, res) {
-  const result = await notificationService.clearNotifications(req.user.id);
+  const result = await notificationService.clearAllNotifications(req.user.id);
   res.json(result);
 }
 

@@ -15,3 +15,4 @@ export const statusTone: Record<string, string> = {
 export const chartColors = ["#111827", "#b98f47", "#2563eb", "#059669", "#dc2626", "#7c3aed"];
 
 export type AdminTab = "dashboard" | "products" | "orders" | "customers" | "feedback" | "notifications" | "coupons" | "profile";
+

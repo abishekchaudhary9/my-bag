@@ -2,12 +2,14 @@ const mongoose = require("mongoose");
 const Review = require("../models/reviewModel");
 const Product = require("../models/productModel");
 const Order = require("../models/orderModel");
+const User = require("../models/userModel");
 const createHttpError = require("../utils/httpError");
+const { emitEvent } = require("../lib/socket");
+const notificationService = require("./notificationService");
 
 async function getProductReviews(productId) {
   const reviews = await Review.find({ product: productId }).populate("user").sort({ created_at: -1 });
   
-  // Calculate average
   const stats = await Review.aggregate([
     { $match: { product: new mongoose.Types.ObjectId(productId) } },
     { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
@@ -64,7 +66,6 @@ async function submitReview(userId, productId, data) {
 
   await review.save();
 
-  // Update product stats
   const stats = await Review.aggregate([
     { $match: { product: new mongoose.Types.ObjectId(productId) } },
     { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
@@ -77,12 +78,20 @@ async function submitReview(userId, productId, data) {
     });
   }
 
+  // Real-time: Notify admins & product room
+  emitEvent("admins", "new_review", { 
+    id: String(review._id), 
+    productName: data.title 
+  });
+  emitEvent(`product:${productId}`, "new_review", { id: String(review._id) });
+
   return { message: "Review submitted successfully" };
 }
 
-async function updateReview(userId, reviewId, data) {
+async function updateReview(userId, reviewId, data, isAdmin = false) {
+  const filter = isAdmin ? { _id: reviewId } : { _id: reviewId, user: userId };
   const review = await Review.findOneAndUpdate(
-    { _id: reviewId, user: userId },
+    filter,
     { $set: { rating: data.rating, title: data.title, body: data.body } },
     { new: true }
   );
@@ -98,6 +107,9 @@ async function updateReview(userId, reviewId, data) {
     rating: parseFloat(stats[0].avgRating.toFixed(1)),
     reviews: stats[0].count
   });
+
+  // Real-time: Notify product room
+  emitEvent(`product:${review.product}`, "review_update", { id: reviewId });
 
   return { message: "Review updated successfully" };
 }
@@ -123,12 +135,67 @@ async function deleteReview(userId, reviewId, isAdmin = false) {
     await Product.findByIdAndUpdate(review.product, { rating: 0, reviews: 0 });
   }
 
+  // Real-time: Notify product room
+  emitEvent(`product:${review.product}`, "review_update", { id: reviewId });
+
   return { message: "Review deleted successfully" };
 }
 
 async function replyToReview(reviewId, reply) {
-  const review = await Review.findByIdAndUpdate(reviewId, { admin_reply: reply }, { new: true });
+  const review = await Review.findOneAndUpdate(
+    { _id: reviewId },
+    { $set: { admin_reply: reply } },
+    { new: true }
+  ).populate("user").populate("product");
+
   if (!review) throw createHttpError(404, "Review not found");
+
+  // Determine product ID for real-time event
+  const productId = review.product ? review.product._id : null;
+
+  // Notify the review author
+  if (review.user && review.user._id) {
+    try {
+      const productSlug = review.product ? review.product.slug || '' : '';
+      const productName = review.product ? review.product.name : 'product';
+      await notificationService.createNotification(
+        review.user._id,
+        {
+          title: "Admin Reply to Your Review",
+          message: `Admin replied to your review on "${productName}": "${reply.substring(0, 50)}${reply.length > 50 ? '...' : ''}"`,
+          link: `/product/${productSlug}`
+        }
+      );
+    } catch (err) {
+      console.error("Failed to send user notification for review reply:", err);
+    }
+  }
+
+  // Notify all admins about the reply
+  try {
+    const admins = await User.find({ role: "admin" });
+    const reviewerName = review.user ? `${review.user.first_name} ${review.user.last_name}`.trim() : "User";
+    const productName = review.product ? review.product.name : 'product';
+    for (const admin of admins) {
+      await notificationService.createNotification(
+        admin._id,
+        {
+          title: "Review Reply Added",
+          message: `Admin replied to review by ${reviewerName} on ${productName}.`,
+          link: `/admin?tab=feedback`
+        },
+        { skipToast: false }
+      );
+    }
+  } catch (err) {
+    console.error("Failed to send admin notifications for review reply:", err);
+  }
+
+  // Real-time: Notify product room
+  if (productId) {
+    emitEvent(`product:${productId}`, "review_update", { id: reviewId });
+  }
+
   return { message: "Reply added successfully" };
 }
 

@@ -12,7 +12,7 @@ async function getCart(userId) {
       name: item.product.name,
       slug: item.product.slug,
       price: item.product.price,
-      image: item.product.colors.find(c => c.name === item.color)?.image_url || item.product.colors[0]?.image_url,
+      image: item.product.colors?.find(c => c.name === item.color)?.image_url || item.product.colors?.[0]?.image_url,
       color: item.color,
       size: item.size,
       qty: item.qty

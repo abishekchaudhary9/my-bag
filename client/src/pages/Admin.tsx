@@ -5,7 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { adminApi } from "@/lib/api";
 
@@ -146,17 +146,19 @@ export default function Admin() {
   }, [isAdmin, fetchStats, fetchOrders, fetchCustomers, fetchProducts, fetchFeedback, fetchNotifications, fetchCoupons]);
 
   // Derived filtered data
-  const filteredProducts = useMemo(() => 
-    productList.filter((p: any) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())), 
-  [productList, searchQ]);
-  
-  const visibleOrders = useMemo(() => orders.filter((o: any) => {
+  const safeProductList = Array.isArray(productList) ? productList : [];
+  const filteredProducts = useMemo(() =>
+    safeProductList.filter((p: any) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())),
+  [safeProductList, searchQ]);
+
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const visibleOrders = useMemo(() => safeOrders.filter((o: any) => {
     const q = orderSearch.trim().toLowerCase();
     if (!q) return true;
     return [o.id, o.customer, o.customerEmail, o.customerPhone, o.customerAddress]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(q));
-  }), [orders, orderSearch]);
+  }), [safeOrders, orderSearch]);
 
   const handleViewOrder = async (orderNumber: string) => {
     setViewOrderLoading(true);
@@ -201,7 +203,7 @@ export default function Admin() {
     );
   }
 
-  const unreadCount = notifications.filter((n: any) => n.user_id === state.user?.id && !n.is_read).length;
+  const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
 
   return (
     <AdminLayout 
@@ -402,7 +404,7 @@ export default function Admin() {
           fields={[
             { name: "rating", label: "Rating (1-5)", placeholder: "5", type: "number", required: true, defaultValue: editReviewTarget.rating },
             { name: "title", label: "Title", placeholder: "Review title", defaultValue: editReviewTarget.title },
-            { name: "body", label: "Review Text", placeholder: "The review content...", required: true, defaultValue: editReviewTarget.text },
+            { name: "body", label: "Review Text", placeholder: "The review content...", required: true, defaultValue: editReviewTarget.body },
           ]}
           onConfirm={(data) => { handleEditReview(editReviewTarget.id, data); setEditReviewTarget(null); }}
           onCancel={() => setEditReviewTarget(null)}
@@ -446,3 +448,4 @@ export default function Admin() {
     </AdminLayout>
   );
 }
+

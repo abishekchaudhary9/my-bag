@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Mail, MessageSquare, Phone } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { isFirebaseConfigured } from "@/lib/firebase";
@@ -321,3 +321,4 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
     </button>
   );
 }
+

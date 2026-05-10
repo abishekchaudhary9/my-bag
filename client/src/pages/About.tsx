@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import heroBag from "@/assets/hero-bag.jpg";
 
 const VALUES = [
@@ -50,3 +50,4 @@ export default function About() {
     </Layout>
   );
 }
+

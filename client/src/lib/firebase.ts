@@ -37,3 +37,4 @@ export function createRecaptchaVerifier(containerId: string) {
     size: "invisible",
   });
 }
+

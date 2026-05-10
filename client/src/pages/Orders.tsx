@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Package, Truck, Check, X, Eye, CheckCircle2, Circle } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { resolveAssetUrl } from "@/lib/api";
 
@@ -238,3 +238,4 @@ function OrderTracker({ currentStatus }: { currentStatus: string }) {
     </div>
   );
 }
+

@@ -1,0 +1,103 @@
+[
+  {
+    "province": "Koshi Pradesh",
+    "districts": [
+      {
+        "name": "Bhojpur",
+        "municipalities": ["Bhojpur", "Shadanand", "Hatuwagadhi", "Ramprasad Rai", "Aamchok", "Tyamke Maiyum", "Arun", "Pauwadunma", "Salpasilichho"]
+      },
+      {
+        "name": "Dhankuta",
+        "municipalities": ["Dhankuta", "Pakhribas", "Mahalaxmi", "Sangurigadhi", "Sahidbhumi", "Chhathar Jorpati", "Chaubise"]
+      },
+      {
+        "name": "Ilam",
+        "municipalities": ["Ilam", "Deumai", "Mai", "Suryodaya", "Phakphokthum", "Chulachuli", "Mai Jogmai", "Mangsebung", "Rong", "Sandakpur"]
+      },
+      {
+        "name": "Jhapa",
+        "municipalities": ["Bhadrapur", "Damak", "Gauradaha", "Mechinagar", "Arjundhara", "Kankai", "Shivasatashi", "Birtamod", "Shani-Arjun", "Haldibari", "Kachankawal", "Gauriganj", "Jhapa", "Barhadashi", "Buddhashanti", "Kamal"]
+      },
+      {
+        "name": "Morang",
+        "municipalities": ["Biratnagar", "Belbari", "Letang", "Pathari-Shanischare", "Rangeli", "Ratuwamai", "Sunawarshi", "Urlabari", "Sundar Haraicha", "Budhiganga", "Dhanpalthan", "Gramthan", "Jahada", "Kanepokhari", "Katahari", "Kerabari", "Miklajung"]
+      }
+    ]
+  },
+  {
+    "province": "Madhesh Pradesh",
+    "districts": [
+      {
+        "name": "Bara",
+        "municipalities": ["Kalaiya", "Jeetpur Simara", "Kolhabi", "Nijgadh", "Mahagadhimai", "Simroungadh", "Pacharauta", "Adarsh Kotwal", "Baragadhi", "Devtal", "Karaiya Mai", "Parwanipur", "Prasouni", "Pheta", "Suwarna", "Bishrampur"]
+      },
+      {
+        "name": "Dhanusha",
+        "municipalities": ["Janakpurdham", "Chhireshwornath", "Ganeshman Charnath", "Dhanushadham", "Nagarain", "Bideha", "Mithila", "Sahidnagar", "Sabaila", "Kamala", "Mithila Bihari", "Hansapur", "Aurahi", "Janaknandani", "Bateshwor", "Mukhiyapatti Musharniya", "Laxminiya"]
+      }
+    ]
+  },
+  {
+    "province": "Bagmati Pradesh",
+    "districts": [
+      {
+        "name": "Kathmandu",
+        "municipalities": ["Kathmandu Metropolitan City", "Kirtipur", "Gokarneshwor", "Dakshinkali", "Tarakeshwar", "Shankharapur", "Nagarjun", "Tokha", "Chandragiri", "Budhanilkantha", "Kageshwori-Manohara"],
+        "lat": 27.7172,
+        "lng": 85.3240
+      },
+      {
+        "name": "Lalitpur",
+        "municipalities": ["Lalitpur Metropolitan City", "Mahalaxmi", "Godawari", "Konjyosom", "Bagmati", "Mahankal"],
+        "lat": 27.6710,
+        "lng": 85.3247
+      },
+      {
+        "name": "Bhaktapur",
+        "municipalities": ["Bhaktapur", "Madhyapur Thimi", "Changunarayan", "Suryabinayak"],
+        "lat": 27.6710,
+        "lng": 85.4298
+      },
+      {
+        "name": "Chitwan",
+        "municipalities": ["Bharatpur", "Khairahani", "Madi", "Ratnanagar", "Rapti", "Kalika", "Ichchhakamana"]
+      }
+    ]
+  },
+  {
+    "province": "Gandaki Pradesh",
+    "districts": [
+      {
+        "name": "Kaski",
+        "municipalities": ["Pokhara Lekhnath", "Annapurna", "Machhapuchchhre", "Madi", "Rupa"]
+      }
+    ]
+  },
+  {
+    "province": "Lumbini Pradesh",
+    "districts": [
+      {
+        "name": "Rupandehi",
+        "municipalities": ["Butwal", "Siddharthanagar", "Devdaha", "Lumbini Sanskritik", "Tilottama", "Sainamaina", "Gaidahawa", "Kanchan", "Kotahimai", "Marchawari", "Mayadevi", "Omshatiya", "Rohini", "Sammarimai", "Shuddhodhan", "Siyari"]
+      }
+    ]
+  },
+  {
+    "province": "Karnali Pradesh",
+    "districts": [
+      {
+        "name": "Surkhet",
+        "municipalities": ["Birendranagar", "Bheriganga", "Gurbhakot", "Panchapuri", "Lekbeshi", "Chaukune", "Barahatal", "Chingad", "Simta"]
+      }
+    ]
+  },
+  {
+    "province": "Sudurpashchim Pradesh",
+    "districts": [
+      {
+        "name": "Kailali",
+        "municipalities": ["Dhangadhi", "Tikapur", "Ghodaghodi", "Lamki Chuha", "Bhajani", "Godawari", "Gauriganga", "Janaki", "Bardagoriya", "Mohanyal", "Kailari", "Chure", "Joshipur"]
+      }
+    ]
+  }
+]

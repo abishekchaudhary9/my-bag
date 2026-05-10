@@ -1,11 +1,11 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu, ChevronRight } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { products } from "@/data/products";
-import { notificationsApi, resolveAssetUrl } from "@/lib/api";
+import { resolveAssetUrl } from "@/lib/api";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 
 const nav = [
@@ -27,7 +27,6 @@ export default function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
-  const headerRef = useRef(null);
 
   const { scrollY } = useScroll();
   const headerHeight = useTransform(scrollY, [0, 100], ["5rem", "4rem"]);
@@ -44,12 +43,10 @@ export default function Header() {
   return (
     <>
       <motion.header
-        ref={headerRef}
         style={{ height: headerHeight, backgroundColor: headerBg, backdropFilter: headerBlur }}
         className="sticky top-0 z-50 transition-all duration-500 flex items-center border-b border-border/10"
       >
         <div className="container-luxe flex items-center justify-between w-full h-full relative">
-          {/* LEFT: Menu & Search */}
           <div className="flex items-center gap-0.5 sm:gap-2 z-10">
             <button
               className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm lg:hidden flex items-center justify-center"
@@ -67,13 +64,11 @@ export default function Header() {
             </button>
           </div>
 
-          {/* CENTER: Logo - Absolutely centered for symmetry */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
             <motion.div
               className="font-display text-xl sm:text-3xl tracking-tight cursor-pointer py-1"
               whileTap={{ scale: 0.98 }}
               onClick={() => {
-                // We keep the click logic but the animation is the focus
                 navigate("/");
               }}
             >
@@ -83,13 +78,13 @@ export default function Header() {
                   color: [
                     "hsl(var(--foreground))",
                     "hsl(var(--accent))",
-                    "hsl(var(--foreground))"
+                    "hsl(var(--foreground))",
                   ],
                 }}
                 transition={{
                   duration: 1.2,
                   ease: "easeInOut",
-                  times: [0, 0.5, 1]
+                  times: [0, 0.5, 1],
                 }}
                 className="hover:text-accent/40 transition-colors duration-500"
               >
@@ -98,7 +93,6 @@ export default function Header() {
             </motion.div>
           </div>
 
-          {/* RIGHT: Essential Utilities */}
           <div className="flex items-center gap-0.5 sm:gap-2 z-10">
             <div className="hidden lg:flex items-center gap-2">
               <ThemeToggle />
@@ -114,7 +108,6 @@ export default function Header() {
               )}
             </div>
 
-            {/* Notifications */}
             {authState.isAuthenticated && (
               <button
                 onClick={() => {
@@ -130,32 +123,28 @@ export default function Header() {
                 <Bell className="h-5 w-5" strokeWidth={1.5} />
                 {authState.unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
-                    {authState.unreadCount > 9 ? '9+' : authState.unreadCount}
+                    {authState.unreadCount > 9 ? "9+" : authState.unreadCount}
                   </span>
                 )}
               </button>
             )}
 
-            {/* User Account - Visible on mobile with new style */}
-
-              <button
-                onClick={() => {
-                  if (!authState.isAuthenticated) navigate("/login");
-                  else {
-                    setShowUserMenu(!showUserMenu);
-                    setShowNotifications(false);
-                  }
-                }}
-                className="p-1 sm:p-1.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center overflow-hidden"
-              >
-                {authState.isAuthenticated && authState.user?.avatar ? (
-                  <img src={authState.user.avatar} alt="" className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" />
-                ) : (
-                  <User className="h-5 w-5" strokeWidth={1.5} />
-                )}
-              </button>
-
-
+            <button
+              onClick={() => {
+                if (!authState.isAuthenticated) navigate("/login");
+                else {
+                  setShowUserMenu(!showUserMenu);
+                  setShowNotifications(false);
+                }
+              }}
+              className="p-1 sm:p-1.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center overflow-hidden"
+            >
+              {authState.isAuthenticated && authState.user?.avatar ? (
+                <img src={authState.user.avatar} alt="" className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" />
+              ) : (
+                <User className="h-5 w-5" strokeWidth={1.5} />
+              )}
+            </button>
 
             {!isAdmin && (
               <Link to="/cart" aria-label="Cart" className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
@@ -169,7 +158,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* DYNAMIC DROPDOWNS: Anchored to the main header content area for stability */}
           <AnimatePresence>
             {showNotifications && (
               <motion.div
@@ -181,10 +169,7 @@ export default function Header() {
                 <div className="p-4 border-b border-border/50 flex items-center justify-between">
                   <div className="text-[10px] font-bold uppercase tracking-widest">Notifications</div>
                   {authState.unreadCount > 0 && (
-                    <button 
-                      onClick={() => markAllNotificationsRead()} 
-                      className="text-[9px] uppercase tracking-widest text-accent hover:underline"
-                    >
+                    <button onClick={() => markAllNotificationsRead()} className="text-[9px] uppercase tracking-widest text-accent hover:underline">
                       Mark all read
                     </button>
                   )}
@@ -194,25 +179,26 @@ export default function Header() {
                     <div className="py-12 text-center text-xs text-muted-foreground italic">No new notifications</div>
                   ) : (
                     authState.notifications.slice(0, 5).map((n) => (
-                      <div 
-                        key={n.id} 
-                        className={`p-4 border-b border-border/30 last:border-0 hover:bg-white/5 transition-colors cursor-pointer ${!n.is_read ? 'bg-accent/5' : ''}`}
+                      <div
+                        key={n.id}
+                        className={`p-4 border-b border-border/30 last:border-0 hover:bg-white/5 transition-colors cursor-pointer relative ${!n.isRead ? "bg-accent/[0.03]" : ""}`}
                         onClick={() => {
                           if (n.link) navigate(n.link);
                           setShowNotifications(false);
                         }}
                       >
-                        <div className="font-medium text-xs mb-1">{n.title}</div>
-                        <div className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</div>
-                        <div className="text-[9px] text-muted-foreground/50 mt-2 uppercase tracking-tight">
-                          {new Date(n.created_at).toLocaleDateString()}
+                        {!n.isRead && <span className="absolute left-2 top-5 h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.6)]" />}
+                        <div className={`font-medium text-xs mb-1 ${!n.isRead ? "pl-2" : ""}`}>{n.title}</div>
+                        <div className={`text-[11px] text-muted-foreground line-clamp-2 leading-relaxed ${!n.isRead ? "pl-2" : ""}`}>{n.message}</div>
+                        <div className={`text-[9px] text-muted-foreground/50 mt-2 uppercase tracking-tight ${!n.isRead ? "pl-2" : ""}`}>
+                          {new Date(n.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-                <Link 
-                  to="/profile?tab=notifications" 
+                <Link
+                  to="/profile?tab=notifications"
                   onClick={() => setShowNotifications(false)}
                   className="block py-3 text-center text-[10px] uppercase tracking-widest font-bold border-t border-border/50 hover:bg-white/5 transition-colors"
                 >
@@ -232,14 +218,16 @@ export default function Header() {
                   <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
                   <div className="text-sm font-medium truncate">{authState.user?.email}</div>
                 </div>
-                
                 <Link to={isAdmin ? "/admin" : "/profile"} onClick={() => setShowUserMenu(false)} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors rounded-lg">
                   {isAdmin ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
                   {isAdmin ? "Admin Panel" : "My Profile"}
                 </Link>
-
                 <button
-                  onClick={() => { logout(); setShowUserMenu(false); navigate("/"); }}
+                  onClick={() => {
+                    logout();
+                    setShowUserMenu(false);
+                    navigate("/");
+                  }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
                 >
                   <LogOut className="h-4 w-4" /> Sign Out
@@ -250,7 +238,6 @@ export default function Header() {
         </div>
       </motion.header>
 
-      {/* SEARCH OVERLAY */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
@@ -305,7 +292,6 @@ export default function Header() {
         )}
       </AnimatePresence>
 
-      {/* MOBILE MENU DRAWER */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -355,7 +341,7 @@ export default function Header() {
                         </div>
                         <div>
                           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account</div>
-                          <div className="text-sm font-medium">{authState.user?.firstName || 'User'}</div>
+                          <div className="text-sm font-medium">{authState.user?.firstName || "User"}</div>
                         </div>
                       </Link>
                       {canUseWishlist && (
@@ -385,7 +371,7 @@ export default function Header() {
                 </motion.div>
 
                 <nav className="p-8 space-y-8">
-                  {nav.map((item, i) => (
+                  {nav.map((item) => (
                     <motion.div
                       key={item.label}
                       initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
@@ -396,7 +382,7 @@ export default function Header() {
                       <Link
                         to={item.to}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="block font-display text-4xl hover:text-accent transition-colors tracking-tight"
+                        className="block font-display text-2xl hover:text-accent transition-colors tracking-tight"
                       >
                         {item.label}
                       </Link>
@@ -404,7 +390,7 @@ export default function Header() {
                   ))}
                 </nav>
 
-                <div className="h-20" /> {/* Scroll spacer */}
+                <div className="h-20" />
               </div>
 
               <motion.div
@@ -431,3 +417,4 @@ export default function Header() {
     </>
   );
 }
+

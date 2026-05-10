@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Package, Truck, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -167,3 +167,4 @@ export default function TrackOrder() {
     </Layout>
   );
 }
+

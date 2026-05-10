@@ -59,9 +59,9 @@ export function useAdminData() {
     setLoading(true);
     try {
       const d = await productsApi.list();
-      setProductList(d.products);
+      setProductList(Array.isArray(d?.products) ? d.products : localProducts as any[]);
     } catch {
-      setProductList(localProducts as any[]);
+      setProductList(Array.isArray(localProducts) ? localProducts as any[] : []);
     } finally {
       setLoading(false);
     }
@@ -125,16 +125,17 @@ export function useAdminData() {
 
   const categoryData = stats?.categoryTrend || [];
   const topCustomers = stats?.topCustomers || [];
-  const lowStockProducts = productList.filter((p) => (Number(p.stock) || 0) <= 10).slice(0, 5);
+  const safeProductList = Array.isArray(productList) ? productList : [];
+  const lowStockProducts = safeProductList.filter((p) => (Number(p.stock) || 0) <= 10).slice(0, 5);
   const unresolvedFeedback = feedback.reviews.length + feedback.questions.length;
-  
-  const inventoryStats = useMemo(() => {
-    const value = productList.reduce((acc, p) => acc + (Number(p.price) || 0) * (Number(p.stock) || 0), 0);
-    const avg = productList.length ? Math.round(productList.reduce((acc, p) => acc + (Number(p.stock) || 0), 0) / productList.length) : 0;
-    return { value, avg };
-  }, [productList]);
 
-  const recentOrders = useMemo(() => orders.slice(0, 6), [orders]);
+  const inventoryStats = useMemo(() => {
+    const value = safeProductList.reduce((acc, p) => acc + (Number(p.price) || 0) * (Number(p.stock) || 0), 0);
+    const avg = safeProductList.length ? Math.round(safeProductList.reduce((acc, p) => acc + (Number(p.stock) || 0), 0) / safeProductList.length) : 0;
+    return { value, avg };
+  }, [safeProductList]);
+
+  const recentOrders = useMemo(() => Array.isArray(orders) ? orders.slice(0, 6) : [], [orders]);
   const customerOrderCount = customers.reduce((acc, c) => acc + (Number(c.orders) || 0), 0);
   const customerLifetimeValue = customers.reduce((acc, c) => acc + parseCurrency(c.spent), 0);
 
@@ -178,3 +179,4 @@ export function useAdminData() {
     setCoupons
   };
 }
+

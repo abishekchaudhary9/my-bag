@@ -90,6 +90,10 @@ export function useAdminActions({
       fetchProducts();
     });
 
+    ioSocket.on("notification", (data: any) => {
+      fetchNotifications();
+    });
+
     return () => {
       ioSocket.off("new_order");
       ioSocket.off("new_message");
@@ -97,6 +101,7 @@ export function useAdminActions({
       ioSocket.off("new_question");
       ioSocket.off("new_customer");
       ioSocket.off("stock_update");
+      ioSocket.off("notification");
     };
   }, [ioSocket, isAdmin, fetchStats, fetchOrders, fetchNotifications, fetchFeedback, fetchCustomers, fetchProducts, handleTabChange, setOrderSearch]);
 
@@ -212,3 +217,4 @@ export function useAdminActions({
     refresh
   };
 }
+

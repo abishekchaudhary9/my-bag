@@ -105,8 +105,8 @@ export default function OrderDetailsModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items?.map((item: any) => (
-                      <tr key={item.id} className="border-b border-border/50 last:border-0">
+                    {order.items?.map((item: any, idx: number) => (
+                      <tr key={`${item.name}-${item.color}-${item.size}-${idx}`} className="border-b border-border/50 last:border-0">
                         <td className="px-5 py-3 font-medium">{item.name}</td>
                         <td className="px-5 py-3">{fallback(item.color)}</td>
                         <td className="px-5 py-3">{fallback(item.size)}</td>
@@ -174,3 +174,4 @@ function TotalRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

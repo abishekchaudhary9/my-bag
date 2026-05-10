@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Package, Heart, MapPin, Settings, LogOut, Camera, Shield, Bell, Eye, ChevronDown, Trash2 } from "lucide-react";
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 import { useAuth, type User as AuthUser } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import { productsApi } from "@/lib/api";
@@ -14,10 +14,10 @@ import { AddressesTabForm } from "@/components/profile/AddressesTabForm";
 import { SecurityTabForm } from "@/components/profile/SecurityTabForm";
 import { ProfileSkeleton } from "@/components/profile/ProfileSkeletons";
 
-type Tab = "overview" | "settings" | "addresses" | "security";
+type Tab = "overview" | "settings" | "addresses" | "security" | "notifications";
 
 export default function Profile() {
-  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin, updateAvatar, deleteAvatar } = useAuth();
+  const { state, logout, updateProfile, changePassword, resendVerificationEmail, isAdmin, updateAvatar, deleteAvatar, markAllNotificationsRead, markNotificationRead } = useAuth();
   const { state: storeState } = useStore();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
@@ -27,8 +27,10 @@ export default function Profile() {
   useEffect(() => {
     setLoading(true);
     productsApi.list()
-      .then(({ products }) => setApiProducts(products as Product[]))
-      .catch(() => {})
+      .then((res) => {
+        setApiProducts(Array.isArray(res?.products) ? res.products as Product[] : []);
+      })
+      .catch(() => setApiProducts([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -72,6 +74,7 @@ export default function Profile() {
     { key: "settings", label: "Edit Profile", icon: Settings },
     { key: "addresses", label: "Addresses", icon: MapPin },
     { key: "security", label: "Security", icon: Shield },
+    { key: "notifications", label: "Notifications", icon: Bell },
   ];
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,7 +232,7 @@ export default function Profile() {
                     <Link key={o.id} to={`/order-confirmation/${o.id}`} className="flex items-center justify-between p-4 bg-secondary/40 hover:bg-secondary/60 transition-colors group">
                       <div>
                         <div className="text-sm font-medium group-hover:text-accent transition-colors">{o.id}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{o.items.length} items · {new Date(o.date).toLocaleDateString()}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{o.items.length} items · {new Date(o.createdAt).toLocaleDateString()}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm">Rs {o.total.toFixed(2)}</div>
@@ -274,6 +277,58 @@ export default function Profile() {
         {/* SECURITY TAB */}
         {tab === "security" && <SecurityTabForm onChangePassword={changePassword} />}
 
+        {/* NOTIFICATIONS TAB */}
+        {tab === "notifications" && (
+          <div className="space-y-8 animate-fade-up">
+            <div className="flex items-center justify-between">
+              <div className="eyebrow">Recent Activity</div>
+              {state.notifications.length > 0 && (
+                <button 
+                  onClick={() => markAllNotificationsRead()}
+                  className="text-[10px] font-bold uppercase tracking-widest text-accent hover:underline"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
+
+            {state.notifications.length === 0 ? (
+              <div className="py-20 text-center border border-dashed border-border/60 rounded-2xl">
+                <Bell className="h-8 w-8 text-muted-foreground/20 mx-auto mb-4" strokeWidth={1} />
+                <p className="text-sm text-muted-foreground italic">No notifications yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {state.notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      if (!n.isRead) markNotificationRead(n.id);
+                      if (n.link) navigate(n.link);
+                    }}
+                    className={`p-6 border border-border/50 rounded-2xl transition-all group cursor-pointer hover:border-foreground/20 ${
+                      !n.isRead ? "bg-accent/5" : "bg-secondary/20"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <div className="font-medium text-sm group-hover:text-accent transition-colors flex items-center gap-2">
+                          {n.title}
+                          {!n.isRead && <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{n.message}</p>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground/50 uppercase tracking-tight whitespace-nowrap">
+                        {new Date(n.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Logout */}
         <div className="mt-12 pt-8 border-t border-border">
           <button
@@ -299,3 +354,4 @@ function QuickStat({ icon: Icon, label, value, to, accent }: { icon: typeof User
   );
   return to ? <Link to={to}>{inner}</Link> : inner;
 }
+

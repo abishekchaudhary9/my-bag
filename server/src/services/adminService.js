@@ -7,33 +7,115 @@ const Review = require("../models/reviewModel");
 const Question = require("../models/questionModel");
 const Notification = require("../models/notificationModel");
 const createHttpError = require("../utils/httpError");
+const { emitEvent } = require("../lib/socket");
 const orderService = require("./orderService");
 
 async function getStats() {
-  const [totalSales, ordersCount, productsCount, usersCount] = await Promise.all([
+  const [totalSales, ordersCount, productsCount, usersCount, products] = await Promise.all([
     Order.aggregate([{ $group: { _id: null, total: { $sum: "$total" } } }]),
     Order.countDocuments(),
     Product.countDocuments(),
-    User.countDocuments({ role: "user" })
+    User.countDocuments({ role: "user" }),
+    Product.find()
   ]);
 
   const sales = totalSales.length > 0 ? totalSales[0].total : 0;
 
+  const statusCounts = await Order.aggregate([
+    { $group: { _id: "$status", count: { $sum: 1 } } }
+  ]);
+  const statuses = { processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+  statusCounts.forEach(s => {
+    if (statuses[s._id] !== undefined) statuses[s._id] = s.count;
+  });
+
+  // Revenue Trend (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const revenueData = await Order.aggregate([
+    { $match: { created_at: { $gte: sevenDaysAgo } } },
+    { $group: { 
+        _id: { $dateToString: { format: "%m/%d", date: "$created_at" } }, 
+        revenue: { $sum: "$total" },
+        orders: { $sum: 1 }
+    }},
+    { $sort: { _id: 1 } }
+  ]);
+
+  // Category Distribution
+  const categoryMap = {};
+  products.forEach(p => {
+    const category = p.category || "Uncategorized";
+    if (!categoryMap[category]) categoryMap[category] = { category, value: 0, stock: 0 };
+    categoryMap[category].value += (p.price || 0) * (p.stock || 0);
+    categoryMap[category].stock += (p.stock || 0);
+  });
+
+  // Top Customers
+  const topUsers = await Order.aggregate([
+    { $group: { _id: "$user", spent: { $sum: "$total" }, orders: { $sum: 1 } } },
+    { $sort: { spent: -1 } },
+    { $limit: 5 },
+    { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "userData" } },
+    { $unwind: "$userData" }
+  ]);
+
+  // Calculate changes (simple mock for now based on actual counts vs defaults)
+  const lastMonth = new Date();
+  lastMonth.setMonth(lastMonth.getMonth() - 1);
+  
+  const [prevSales, prevOrders, prevUsers] = await Promise.all([
+    Order.aggregate([{ $match: { created_at: { $lt: lastMonth } } }, { $group: { _id: null, total: { $sum: "$total" } } }]),
+    Order.countDocuments({ created_at: { $lt: lastMonth } }),
+    User.countDocuments({ role: "user", created_at: { $lt: lastMonth } })
+  ]);
+
+  const pSales = prevSales.length > 0 ? prevSales[0].total : 1;
+  const revenueChange = ((sales - pSales) / pSales) * 100;
+  const ordersChange = prevOrders > 0 ? ((ordersCount - prevOrders) / prevOrders) * 100 : 0;
+  const customersChange = prevUsers > 0 ? ((usersCount - prevUsers) / prevUsers) * 100 : 0;
+
   return {
     stats: {
-      totalSales: sales,
-      totalOrders: ordersCount,
-      totalProducts: productsCount,
-      totalCustomers: usersCount,
-      revenueChange: 12.5,
-      ordersChange: 8.2,
-      customersChange: -2.4
+      revenue: sales,
+      orders: ordersCount,
+      products: productsCount,
+      customers: usersCount,
+      processingOrders: statuses.processing,
+      shippedOrders: statuses.shipped,
+      deliveredOrders: statuses.delivered,
+      cancelledOrders: statuses.cancelled,
+      revenueChange,
+      ordersChange,
+      customersChange,
+      revenueTrend: revenueData.map(d => ({ date: d._id, revenue: d.revenue, orders: d.orders })),
+      categoryTrend: Object.values(categoryMap),
+      topCustomers: topUsers.map(u => ({
+        id: String(u._id),
+        name: `${u.userData.first_name} ${u.userData.last_name}`,
+        spent: u.spent,
+        orders: u.orders
+      }))
     }
   };
 }
 
 async function listOrders(status) {
-  return orderService.getUserOrders(null); // Adjusted in orderService to handle all orders if userId is null
+  const filter = status ? { status } : {};
+  const orders = await Order.find(filter).sort({ created_at: -1 });
+  return { 
+    orders: orders.map(o => {
+      const json = o.toJSON();
+      return {
+        ...json,
+        id: json.orderNumber,
+        customer: `${json.shippingAddress?.firstName || ''} ${json.shippingAddress?.lastName || ''}`.trim() || 'Unknown',
+        customerEmail: json.shippingAddress?.email || 'N/A',
+        customerPhone: json.shippingAddress?.phone || 'N/A',
+        customerAddress: `${json.shippingAddress?.street || ''}, ${json.shippingAddress?.city || ''}`.replace(/^,\s*/, '') || 'N/A'
+      };
+    }) 
+  };
 }
 
 async function getOrderDetails(orderNumber) {
@@ -46,7 +128,26 @@ async function updateOrder(orderNumber, data) {
 
 async function listCustomers() {
   const customers = await User.find({ role: "user" }).sort({ created_at: -1 });
-  return customers.map(c => c.toJSON());
+  
+  const userStats = await Order.aggregate([
+    { $group: { _id: "$user", count: { $sum: 1 }, totalSpent: { $sum: "$total" } } }
+  ]);
+  
+  const statsMap = {};
+  userStats.forEach(s => {
+    statsMap[String(s._id)] = { count: s.count, spent: s.totalSpent };
+  });
+  
+  return customers.map(c => {
+    const json = c.toJSON();
+    const stats = statsMap[String(c._id)] || { count: 0, spent: 0 };
+    return {
+      ...json,
+      name: `${json.firstName || ''} ${json.lastName || ''}`.trim() || 'Unknown',
+      orders: stats.count,
+      spent: stats.spent
+    };
+  });
 }
 
 async function listMessages() {
@@ -104,12 +205,33 @@ async function listNotifications() {
 
 async function createNotification(data) {
   const notification = new Notification({
-    user: data.userId, // If null, it's global or needs adjustment
+    user: data.userId,
     title: data.title,
     message: data.message,
     link: data.link
   });
   await notification.save();
+
+  // Real-time: Notify the target user and admins
+  if (data.userId) {
+    emitEvent(`user_${data.userId}`, "notification", {
+      id: String(notification._id),
+      title: data.title,
+      message: data.message,
+      link: data.link,
+      isRead: false,
+      createdAt: notification.created_at
+    });
+  }
+  emitEvent("admins", "notification", {
+    id: String(notification._id),
+    title: data.title,
+    message: data.message,
+    link: data.link,
+    isRead: false,
+    createdAt: notification.created_at
+  });
+
   return { message: "Notification created" };
 }
 

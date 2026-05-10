@@ -122,3 +122,4 @@ export function SecurityTabForm({ onChangePassword }: SecurityTabProps) {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import Layout from "@/components/site/Layout";
+import Layout from "@/components/layouts/Layout";
 
 const SIZES = [
   { name: "Small", dims: "30 × 22 × 12 cm", fits: "Phone, wallet, keys, lipstick", best: "Evening outings, minimal carry" },
@@ -55,3 +55,4 @@ export default function SizeGuide() {
     </Layout>
   );
 }
+
