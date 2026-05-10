@@ -210,6 +210,7 @@ export default function Admin() {
       notificationCount={unreadCount} 
       onBellClick={() => handleTabChange("notifications")}
       onProfileClick={() => handleTabChange("profile")}
+      isBellBlinking={tab !== "notifications" && unreadCount > 0}
     >
       <section className="container-luxe pt-12 pb-6">
         <div className="flex items-center justify-between">

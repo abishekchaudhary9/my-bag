@@ -107,11 +107,11 @@ export default function Orders() {
                     <div>
                       <div className="font-display text-xl">{order.id}</div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(order.date).toLocaleDateString("en-US", {
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
-                        })}
+                        }) : "Order date pending"}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

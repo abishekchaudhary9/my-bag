@@ -58,9 +58,9 @@ export default function Header() {
             <button
               aria-label="Search"
               onClick={() => setIsSearchOpen(true)}
-              className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
+              className="p-1.5 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center"
             >
-              <Search className="h-5 w-5" strokeWidth={1.5} />
+              <Search className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={1.5} />
             </button>
           </div>
 
@@ -120,9 +120,9 @@ export default function Header() {
                 }}
                 className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm flex items-center justify-center relative group"
               >
-                <Bell className="h-5 w-5" strokeWidth={1.5} />
+                <Bell className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={1.5} />
                 {authState.unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
+                  <span className={`absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground ${showNotifications ? "" : "animate-pulse"}`}>
                     {authState.unreadCount > 9 ? "9+" : authState.unreadCount}
                   </span>
                 )}
@@ -142,13 +142,13 @@ export default function Header() {
               {authState.isAuthenticated && authState.user?.avatar ? (
                 <img src={authState.user.avatar} alt="" className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" />
               ) : (
-                <User className="h-5 w-5" strokeWidth={1.5} />
+                <User className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={1.5} />
               )}
             </button>
 
             {!isAdmin && (
-              <Link to="/cart" aria-label="Cart" className="p-2 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
-                <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
+              <Link to="/cart" aria-label="Cart" className="p-1.5 sm:p-2.5 bg-background/10 dark:bg-white/10 backdrop-blur-md hover:bg-background/20 dark:hover:bg-white/20 rounded-full transition-all border border-white/5 dark:border-white/10 shadow-sm relative flex items-center justify-center">
+                <ShoppingBag className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={1.5} />
                 {totals.count > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-foreground text-background text-[10px] flex items-center justify-center font-medium">
                     {totals.count}
@@ -382,7 +382,7 @@ export default function Header() {
                       <Link
                         to={item.to}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="block font-display text-2xl hover:text-accent transition-colors tracking-tight"
+                        className="block font-display text-xl hover:text-accent transition-colors tracking-tight"
                       >
                         {item.label}
                       </Link>

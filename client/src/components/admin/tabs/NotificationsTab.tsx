@@ -3,6 +3,7 @@ import { Panel } from "../AdminShared";
 import { TableSkeleton } from "../AdminSkeletons";
 import { notificationsApi } from "@/lib/api";
 import { AdminTab } from "@/constants/adminConstants";
+import { useAuth } from "@/context/AuthContext";
 
 interface NotificationsTabProps {
   loading: boolean;
@@ -19,11 +20,29 @@ export function NotificationsTab({
   handleTabChange,
   setOrderSearch
 }: NotificationsTabProps) {
+  const { markAllNotificationsRead } = useAuth();
+  
   if (loading) return <TableSkeleton />;
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <div className="space-y-6">
-      <Panel title="System Notifications" eyebrow="User activity alerts">
+      <Panel 
+        title="System Notifications" 
+        eyebrow="User activity alerts"
+        action={unreadCount > 0 && (
+          <button 
+            onClick={async () => {
+              await markAllNotificationsRead();
+              fetchNotifications();
+            }}
+            className="text-[10px] font-bold uppercase tracking-widest text-accent hover:text-foreground transition-colors"
+          >
+            Mark all as read
+          </button>
+        )}
+      >
         {notifications.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted-foreground border border-dashed border-border">No recent notifications.</div>
         ) : (

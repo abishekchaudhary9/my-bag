@@ -13,7 +13,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { statusColor, statusTone } from "@/constants/adminConstants";
 
 /* ─── Admin Layout ─────────────────────────────────────── */
-export function AdminLayout({ children, notificationCount, onBellClick, onProfileClick }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void, onProfileClick?: () => void }) {
+export function AdminLayout({ children, notificationCount, onBellClick, onProfileClick, isBellBlinking }: { children: React.ReactNode, notificationCount?: number, onBellClick?: () => void, onProfileClick?: () => void, isBellBlinking?: boolean }) {
   const { state, logout } = useAuth();
   const navigate = useNavigate();
   const handleLogout = () => { logout(); toast.success("Signed out"); navigate("/"); };
@@ -40,7 +40,7 @@ export function AdminLayout({ children, notificationCount, onBellClick, onProfil
               >
                 <Bell className="h-5 w-5" strokeWidth={1.5} />
                 {notificationCount ? (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-pulse">
+                  <span className={`absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground ${isBellBlinking ? "animate-pulse" : ""}`}>
                     {notificationCount > 9 ? '9+' : notificationCount}
                   </span>
                 ) : null}
