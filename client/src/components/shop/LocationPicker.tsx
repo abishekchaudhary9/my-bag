@@ -289,12 +289,15 @@ export default function LocationPicker({ initialData, onChange }: LocationPicker
               className="pl-10 h-10 bg-secondary/50 border-border/30 rounded-full text-xs"
             />
             {showResults && searchResults.length > 0 && (
-              <div className="absolute z-[1001] top-full left-0 w-full mt-2 glass border border-border/50 rounded-xl shadow-lift overflow-hidden max-h-[200px] overflow-y-auto">
+              <div 
+                data-lenis-prevent
+                className="absolute z-[1001] top-full left-0 w-full mt-2 bg-background border border-border/50 rounded-xl shadow-lift max-h-[200px] overflow-y-auto touch-pan-y"
+              >
                 {searchResults.map((res, i) => (
                   <button
                     key={i}
                     onClick={() => selectSearchResult(res)}
-                    className="w-full text-left px-4 py-3 text-[11px] hover:bg-accent/5 transition-colors border-b border-border/10 last:border-0"
+                    className="w-full text-left px-4 py-3 text-[11px] text-foreground hover:bg-secondary transition-colors border-b border-border/10 last:border-0"
                   >
                     {res.display_name}
                   </button>

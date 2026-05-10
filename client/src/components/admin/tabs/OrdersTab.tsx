@@ -73,6 +73,7 @@ export function OrdersTab({
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border bg-secondary/30 text-left">
               <th className="px-4 py-3 text-xs text-muted-foreground font-medium uppercase tracking-widest">Order ID</th>
+              <th className="px-4 py-3 text-xs text-muted-foreground font-medium uppercase tracking-widest">Date & Time</th>
               <th className="px-4 py-3 text-xs text-muted-foreground font-medium uppercase tracking-widest">Customer</th>
               <th className="px-4 py-3 text-xs text-muted-foreground font-medium uppercase tracking-widest">Status</th>
               <th className="px-4 py-3 text-xs text-muted-foreground font-medium uppercase tracking-widest">Total</th>
@@ -82,6 +83,14 @@ export function OrdersTab({
               {visibleOrders.map((o) => (
                 <tr key={o.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors">
                   <td className="px-4 py-3 font-medium">#{o.id}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-[11px] font-medium">
+                      {new Date(o.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {new Date(o.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-medium">{o.customer}</div>
                     <div className="text-[10px] text-muted-foreground">{o.customerEmail}</div>

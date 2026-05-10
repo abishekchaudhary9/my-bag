@@ -78,14 +78,14 @@ export default function ProductSidebar({
             <button
               type="button"
               onClick={() => setQty(Math.max(1, qty - 1))}
-              className="h-12 w-12 rounded-full border border-border text-muted-foreground hover:bg-secondary transition-all"
+              className="h-12 w-12 rounded-full border border-border text-muted-foreground hover:bg-secondary transition-all flex items-center justify-center"
             >
               <Minus className="h-4 w-4" />
             </button>
             <button
               type="button"
               onClick={() => setQty(qty + 1)}
-              className="h-12 w-12 rounded-full border border-border text-muted-foreground hover:bg-secondary transition-all"
+              className="h-12 w-12 rounded-full border border-border text-muted-foreground hover:bg-secondary transition-all flex items-center justify-center"
             >
               <Plus className="h-4 w-4" />
             </button>

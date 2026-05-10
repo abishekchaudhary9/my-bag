@@ -94,27 +94,31 @@ export default function ProductPage() {
         </div>
 
         <section className="container-luxe py-12 md:py-20 grid lg:grid-cols-12 gap-16 lg:gap-24">
-          <ProductGallery product={product} color={color} onSelectColor={setColor} />
-          <ProductSidebar
-            product={product}
-            color={color}
-            size={size}
-            qty={qty}
-            setSize={setSize}
-            setQty={setQty}
-            onSelectColor={setColor}
-            canUseWishlist={canUseWishlist}
-            isWished={isWished}
-            toggleWish={toggleWish}
-            addToCart={handleAddToCart}
-            isAdmin={isAdmin}
-            authState={authState}
-          />
+          <div className="lg:col-span-7">
+            <ProductGallery product={product} color={color} onSelectColor={setColor} />
+          </div>
+          <div className="lg:col-span-5">
+            <ProductSidebar
+              product={product}
+              color={color}
+              size={size}
+              qty={qty}
+              setSize={setSize}
+              setQty={setQty}
+              onSelectColor={setColor}
+              canUseWishlist={canUseWishlist}
+              isWished={isWished}
+              toggleWish={toggleWish}
+              addToCart={handleAddToCart}
+              isAdmin={isAdmin}
+              authState={authState}
+            />
+          </div>
         </section>
 
         <ProductDetailsSection product={product} />
-        <ProductReviewsContainer productId={product.id || product._id} />
-        <ProductQuestionsContainer productId={product.id || product._id} />
+        <ProductReviewsContainer productId={String(product.id || (product as any)._id)} />
+        <ProductQuestionsContainer productId={String(product.id || (product as any)._id)} />
 
         {recommended.length > 0 && (
           <section className="container-luxe py-24 md:py-32">

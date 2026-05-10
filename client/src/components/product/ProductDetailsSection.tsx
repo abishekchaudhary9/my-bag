@@ -12,7 +12,7 @@ export default function ProductDetailsSection({ product }: { product: any }) {
               Every Maison piece is a testament to the quiet power of honest materials and meticulous craftsmanship.
             </p>
             <ul className="grid grid-cols-2 gap-x-10 gap-y-6">
-              {product.details?.slice(0, 4).map((detail: string, index: number) => (
+              {(product.details || []).slice(0, 4).map((detail: string, index: number) => (
                 <li key={index} className="flex items-center gap-4">
                   <CheckCircle2 className="h-4 w-4 text-accent" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">{detail}</span>

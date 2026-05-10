@@ -69,15 +69,42 @@ export default function OrderConfirmation() {
         <div className="max-w-2xl mx-auto">
           {/* Success animation */}
           <div className="text-center animate-fade-up">
-            <div className="mx-auto h-24 w-24 rounded-full bg-emerald-500/10 grid place-items-center mb-8 animate-scale-in">
-              <div className="h-16 w-16 rounded-full bg-emerald-500/20 grid place-items-center">
-                <Check className="h-8 w-8 text-emerald-600" strokeWidth={2} />
+            <div className={`mx-auto h-24 w-24 rounded-full grid place-items-center mb-8 animate-scale-in ${
+              order.paymentStatus === 'paid' || order.paymentMethod === 'cod' 
+                ? 'bg-emerald-500/10' 
+                : 'bg-amber-500/10'
+            }`}>
+              <div className={`h-16 w-16 rounded-full grid place-items-center ${
+                order.paymentStatus === 'paid' || order.paymentMethod === 'cod' 
+                  ? 'bg-emerald-500/20' 
+                  : 'bg-amber-500/20'
+              }`}>
+                {order.paymentStatus === 'paid' || order.paymentMethod === 'cod' ? (
+                  <Check className="h-8 w-8 text-emerald-600" strokeWidth={2} />
+                ) : (
+                  <Package className="h-8 w-8 text-amber-600 animate-pulse" strokeWidth={2} />
+                )}
               </div>
             </div>
-            <div className="eyebrow mb-4 text-emerald-600">Order Confirmed</div>
-            <h1 className="font-display text-4xl md:text-6xl">Thank you.</h1>
+            
+            <div className={`eyebrow mb-4 ${
+              order.paymentStatus === 'paid' || order.paymentMethod === 'cod' 
+                ? 'text-emerald-600' 
+                : 'text-amber-600'
+            }`}>
+              {order.paymentMethod === 'cod' ? 'Order Placed' : order.paymentStatus === 'paid' ? 'Payment Verified' : 'Awaiting Payment'}
+            </div>
+            
+            <h1 className="font-display text-4xl md:text-6xl">
+              {order.paymentStatus === 'paid' || order.paymentMethod === 'cod' ? 'Thank you.' : 'Processing...'}
+            </h1>
+            
             <p className="mt-4 text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Your order has been placed and is being prepared by our atelier. You'll receive a confirmation email shortly.
+              {order.paymentMethod === 'cod' 
+                ? "Your order has been received and will be paid for upon delivery."
+                : order.paymentStatus === 'paid'
+                ? "Your payment has been successfully verified. Our atelier is now preparing your piece."
+                : "We are currently verifying your payment with the provider. This usually takes a few moments."}
             </p>
           </div>
 
@@ -108,8 +135,8 @@ export default function OrderConfirmation() {
 
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Date</div>
-                <div className="text-sm">{new Date(order.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>
+                <div className="text-xs text-muted-foreground mb-1">Date & Time</div>
+                <div className="text-sm">{new Date(order.createdAt).toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Status</div>
