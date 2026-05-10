@@ -219,7 +219,7 @@ async function trackOrder(trackingNumber) {
 }
 
 async function verifyPayment(orderId, pidx, method) {
-  const order = await Order.findById(orderId);
+  const order = await Order.findOne({ order_number: orderId });
   if (!order) throw createHttpError(404, "Order not found");
 
   if (method === "khalti") {

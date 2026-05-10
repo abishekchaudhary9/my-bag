@@ -83,6 +83,7 @@
     transition: background-color 0.7s ease-in-out, color 0.7s ease-in-out;
     font-feature-settings: "ss01", "cv11", "kern";
     margin: 0;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, .font-display {

@@ -96,7 +96,7 @@ export function OrdersTab({
                     <div className="text-[10px] text-muted-foreground">{o.customerEmail}</div>
                   </td>
                   <td className="px-4 py-3"><StatusPill status={o.status} /></td>
-                  <td className="px-4 py-3">{o.total}</td>
+                  <td className="px-4 py-3">{formatCurrency(o.total || 0)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => handleViewOrder(o.id)} className="p-1.5 border border-border hover:border-foreground transition-colors"><Eye className="h-4 w-4" strokeWidth={1.5} /></button>

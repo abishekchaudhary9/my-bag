@@ -56,7 +56,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
       <Header />
-      <main className="flex-1 overflow-x-hidden will-change-scroll">{children}</main>
+      <main className="flex-1 will-change-scroll overflow-x-clip">{children}</main>
       <Footer />
       <AIConcierge />
     </div>

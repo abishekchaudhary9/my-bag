@@ -225,7 +225,7 @@ export function DashboardTab({
                         <div className="font-medium">{o.customer}</div>
                         <div className="max-w-[210px] truncate text-xs text-muted-foreground">{o.customerEmail || new Date(o.createdAt).toLocaleDateString()}</div>
                       </td>
-                      <td className="py-3">{o.total}</td>
+                      <td className="py-3">{formatCurrency(o.total || 0)}</td>
                       <td className="py-3"><StatusPill status={o.status} /></td>
                       <td className="py-3 text-right">
                         <button onClick={() => handleViewOrder(o.id)} disabled={viewOrderLoading && viewOrder?.id === o.id} className="inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs hover:border-foreground disabled:opacity-50">

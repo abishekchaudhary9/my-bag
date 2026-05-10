@@ -5,8 +5,12 @@ import { products as localProducts } from "@/data/products";
 import { parseCurrency } from "@/utils/adminUtils";
 
 export function useAdminData() {
-  const [loading, setLoading] = useState(false);
+  const [loadingCount, setLoadingCount] = useState(0);
+  const loading = loadingCount > 0;
   
+  const incrementLoading = useCallback(() => setLoadingCount(c => c + 1), []);
+  const decrementLoading = useCallback(() => setLoadingCount(c => Math.max(0, c - 1)), []);
+
   // Dashboard & Stats
   const [stats, setStats] = useState<any>(null);
   const [productList, setProductList] = useState<any[]>([]);
@@ -17,7 +21,7 @@ export function useAdminData() {
   const [coupons, setCoupons] = useState<any[]>([]);
 
   const fetchStats = useCallback(async () => {
-    setLoading(true);
+    incrementLoading();
     try { 
       const d = await adminApi.stats(); 
       setStats(d.stats); 
@@ -25,12 +29,12 @@ export function useAdminData() {
       console.error("Stats fetch failed:", err);
       toast.error("Could not load dashboard stats");
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   const fetchOrders = useCallback(async (status?: string) => {
-    setLoading(true);
+    incrementLoading();
     try {
       const d = await adminApi.orders(status === "all" ? undefined : status);
       setOrders(d.orders);
@@ -38,12 +42,12 @@ export function useAdminData() {
       console.error("Orders fetch failed:", err);
       toast.error("Could not load orders list");
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   const fetchCustomers = useCallback(async () => {
-    setLoading(true);
+    incrementLoading();
     try { 
       const d = await adminApi.customers(); 
       setCustomers(d.customers); 
@@ -51,24 +55,24 @@ export function useAdminData() {
       console.error("Customers fetch failed:", err);
       toast.error("Could not load customers list");
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
+    incrementLoading();
     try {
       const d = await productsApi.list();
       setProductList(Array.isArray(d?.products) ? d.products : localProducts as any[]);
     } catch {
       setProductList(Array.isArray(localProducts) ? localProducts as any[] : []);
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   const fetchFeedback = useCallback(async () => {
-    setLoading(true);
+    incrementLoading();
     try { 
       const d = await adminApi.feedback(); 
       if (d) setFeedback({ reviews: d.reviews || [], questions: d.questions || [] }); 
@@ -76,12 +80,12 @@ export function useAdminData() {
       console.error("Feedback fetch failed:", err);
       toast.error("Could not load reviews/questions");
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   const fetchNotifications = useCallback(async () => {
-    setLoading(true);
+    incrementLoading();
     try { 
       const d = await adminApi.notifications(); 
       if (d && d.notifications) setNotifications(d.notifications); 
@@ -89,12 +93,12 @@ export function useAdminData() {
       console.error("Notifications fetch failed:", err);
       toast.error("Could not load notifications");
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   const fetchCoupons = useCallback(async () => {
-    setLoading(true);
+    incrementLoading();
     try { 
       const d = await adminApi.coupons(); 
       if (d && d.coupons) setCoupons(d.coupons); 
@@ -102,9 +106,9 @@ export function useAdminData() {
       console.error("Coupons fetch failed:", err);
       toast.error("Could not load coupons");
     } finally {
-      setLoading(false);
+      decrementLoading();
     }
-  }, []);
+  }, [incrementLoading, decrementLoading]);
 
   // Computed Values
   const displayRevenue = stats?.revenue || 0;

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Check, Package, ArrowRight, Printer, Copy } from "lucide-react";
 import Layout from "@/components/layouts/Layout";
@@ -8,33 +8,64 @@ import { ordersApi } from "@/lib/api";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { state, isAdmin, socket, fetchOrders } = useAuth();
-  const order = state.orders.find((o) => o.id === orderId);
+  
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = searchParams.get("q");
-    const pidx = searchParams.get("pidx");
-    const status = searchParams.get("status");
+    if (!orderId) return;
 
-    if (order && ((q === "khalti" && pidx && status === "Completed") || q === "su")) {
-      const method = q === "khalti" ? "khalti" : "esewa";
-      ordersApi.verifyPayment(order.id, pidx || "", method)
-        .then(() => {
-          toast.success("Payment verified successfully!");
+    const loadOrder = async () => {
+      try {
+        const q = searchParams.get("q");
+        const pidx = searchParams.get("pidx");
+        const status = searchParams.get("status");
+
+        let needsVerification = false;
+
+        if ((q === "khalti" && pidx && status === "Completed") || q === "su") {
+          needsVerification = true;
+          const method = q === "khalti" ? "khalti" : "esewa";
+          try {
+            await ordersApi.verifyPayment(orderId, pidx || "", method);
+            toast.success("Payment verified successfully!");
+            // Clean up URL
+            searchParams.delete("q");
+            searchParams.delete("pidx");
+            searchParams.delete("status");
+            searchParams.delete("oid");
+            searchParams.delete("amt");
+            searchParams.delete("refId");
+            setSearchParams(searchParams, { replace: true });
+          } catch (err) {
+            toast.error("Payment verification failed. Please contact support.");
+          }
+        }
+
+        const res = await ordersApi.get(orderId);
+        setOrder(res.order);
+        
+        if (needsVerification) {
           fetchOrders();
-        })
-        .catch(() => {
-          toast.error("Payment verification failed. Please contact support.");
-        });
-    }
-  }, [searchParams, fetchOrders, order]);
+        }
+      } catch (err) {
+        console.error("Failed to load order:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrder();
+  }, [orderId]);
 
   useEffect(() => {
     if (!socket || !orderId) return;
     
     socket.on("order_update", (data) => {
       if (data.orderNumber === orderId) {
+        ordersApi.get(orderId).then((res) => setOrder(res.order)).catch(console.error);
         fetchOrders();
       }
     });
@@ -43,6 +74,16 @@ export default function OrderConfirmation() {
       socket.off("order_update");
     };
   }, [socket, orderId, fetchOrders]);
+
+  if (loading || state.loading) {
+    return (
+      <Layout>
+        <div className="container-luxe py-32 grid place-items-center animate-fade-up">
+          <div className="animate-spin h-8 w-8 border-2 border-border border-t-foreground rounded-full" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!order) {
     return (
