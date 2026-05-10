@@ -1,12 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu, ChevronRight } from "lucide-react";
+import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu, ChevronRight, Camera } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import { products } from "@/data/products";
-import { resolveAssetUrl } from "@/lib/api";
+import { resolveAssetUrl, aiApi } from "@/lib/api";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { toast } from "sonner";
 
 const nav = [
   { to: "/shop", label: "Shop All" },
@@ -23,6 +24,8 @@ export default function Header() {
   const { state: authState, isAdmin, logout, markAllNotificationsRead } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isVisualSearching, setIsVisualSearching] = useState(false);
+  const [visualResults, setVisualResults] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -262,10 +265,60 @@ export default function Header() {
                     }
                   }}
                 />
-                <button onClick={() => setIsSearchOpen(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">
-                  <X className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-4">
+                  <label className="cursor-pointer p-2 hover:bg-secondary rounded-full transition-colors group relative">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setIsVisualSearching(true);
+                        try {
+                          const { recommended, analysis } = await aiApi.visualSearch(file);
+                          setVisualResults(recommended);
+                          toast.success("AI matched your style!", { description: analysis });
+                        } catch (err: any) {
+                          toast.error(err.message || "Visual search failed");
+                        } finally {
+                          setIsVisualSearching(false);
+                        }
+                      }}
+                    />
+                    <Camera className={`h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors ${isVisualSearching ? "animate-pulse" : ""}`} />
+                    <span className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-foreground text-background text-[10px] uppercase tracking-widest font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none rounded">Visual Search</span>
+                  </label>
+                  <button onClick={() => setIsSearchOpen(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
+
+              {visualResults.length > 0 && (
+                <div className="mt-12 animate-fade-up border-b border-border pb-12">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="eyebrow">AI Style Matches</h3>
+                    <button onClick={() => setVisualResults([])} className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground hover:text-foreground underline">Clear Matches</button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    {visualResults.map((p) => (
+                      <Link 
+                        key={p.id} 
+                        to={`/product/${p.slug}`} 
+                        onClick={() => setIsSearchOpen(false)}
+                        className="group"
+                      >
+                        <div className="aspect-[4/5] bg-secondary overflow-hidden rounded-lg mb-3 shadow-sm">
+                          <img src={resolveAssetUrl(p.colors[0]?.image)} alt={p.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        </div>
+                        <div className="text-sm font-medium">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">{p.category}</div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {suggestions.length > 0 && (
                 <div className="mt-12 grid md:grid-cols-2 gap-8">

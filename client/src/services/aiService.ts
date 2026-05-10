@@ -7,11 +7,38 @@ export const aiApi = {
       body: JSON.stringify({ text }),
     }),
 
-  searchAssistant: (query: string, categories?: string[]) =>
-    apiClient.request<{ success: boolean; suggestions: string }>("/ai/search-assistant", {
+  generateDescription: (name: string, features?: string) =>
+    apiClient.request<{ success: boolean; description: string }>("/ai/generate-description", {
       method: "POST",
-      body: JSON.stringify({ query, categories }),
+      body: JSON.stringify({ name, features }),
     }),
+
+  draftReply: (text: string, sentiment?: string) =>
+    apiClient.request<{ success: boolean; reply: string }>("/ai/draft-reply", {
+      method: "POST",
+      body: JSON.stringify({ text, sentiment }),
+    }),
+
+  analyzeSentiment: (text: string) =>
+    apiClient.request<{ success: boolean; sentiment: string; score: number }>("/ai/analyze-sentiment", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+
+  concierge: (message: string, history: any[] = []) =>
+    apiClient.request<{ success: boolean; reply: string }>("/ai/concierge", {
+      method: "POST",
+      body: JSON.stringify({ message, history }),
+    }),
+
+  visualSearch: (file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    return fetch(`${import.meta.env.VITE_API_URL}/ai/visual-search`, {
+      method: "POST",
+      body: formData,
+    }).then(res => res.json()) as Promise<{ success: boolean; recommended: any[]; analysis: string }>;
+  }
 };
 
 

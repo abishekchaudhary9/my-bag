@@ -86,6 +86,36 @@ export function FeedbackTab({
                     >
                       AI Summarize
                     </button>
+                    <button 
+                      onClick={async (e) => {
+                        const btn = e.currentTarget;
+                        const originalText = btn.innerText;
+                        btn.innerText = "Drafting...";
+                        btn.disabled = true;
+                        try {
+                          const { reply } = await aiApi.draftReply(r.body, r.rating > 3 ? "positive" : "negative");
+                          toast.success("AI Draft Ready", { 
+                            description: reply,
+                            duration: 10000,
+                            action: {
+                              label: "Copy",
+                              onClick: () => {
+                                navigator.clipboard.writeText(reply);
+                                toast.success("Copied to clipboard");
+                              }
+                            }
+                          });
+                        } catch (err: any) {
+                          toast.error(err.message || "Drafting failed");
+                        } finally {
+                          btn.innerText = originalText;
+                          btn.disabled = false;
+                        }
+                      }}
+                      className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 hover:opacity-80"
+                    >
+                      AI Draft Reply
+                    </button>
                     <button onClick={() => setEditReviewTarget(r)} className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground hover:text-foreground">Edit</button>
                     <button onClick={() => setDeleteTargetReview(r)} className="text-[10px] uppercase tracking-widest font-bold text-destructive hover:opacity-80">Delete</button>
                   </div>
@@ -132,6 +162,36 @@ export function FeedbackTab({
                       className="text-[10px] uppercase tracking-widest font-bold text-violet-600 hover:opacity-80"
                     >
                       AI Summarize
+                    </button>
+                    <button 
+                      onClick={async (e) => {
+                        const btn = e.currentTarget;
+                        const originalText = btn.innerText;
+                        btn.innerText = "Drafting...";
+                        btn.disabled = true;
+                        try {
+                          const { reply } = await aiApi.draftReply(q.text, "neutral");
+                          toast.success("AI Answer Ready", { 
+                            description: reply,
+                            duration: 10000,
+                            action: {
+                              label: "Copy",
+                              onClick: () => {
+                                navigator.clipboard.writeText(reply);
+                                toast.success("Copied to clipboard");
+                              }
+                            }
+                          });
+                        } catch (err: any) {
+                          toast.error(err.message || "Drafting failed");
+                        } finally {
+                          btn.innerText = originalText;
+                          btn.disabled = false;
+                        }
+                      }}
+                      className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 hover:opacity-80"
+                    >
+                      AI Draft Answer
                     </button>
                     <button onClick={() => setEditQuestionTarget(q)} className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground hover:text-foreground">Edit</button>
                     <button onClick={() => setDeleteTargetQuestion(q)} className="text-[10px] uppercase tracking-widest font-bold text-destructive hover:opacity-80">Delete</button>

@@ -20,7 +20,7 @@ export function NotificationsTab({
   handleTabChange,
   setOrderSearch
 }: NotificationsTabProps) {
-  const { markAllNotificationsRead } = useAuth();
+  const { markAllNotificationsRead, markNotificationRead } = useAuth();
   
   if (loading) return <TableSkeleton />;
 
@@ -35,7 +35,7 @@ export function NotificationsTab({
           <button 
             onClick={async () => {
               await markAllNotificationsRead();
-              fetchNotifications();
+              fetchNotifications(); // Refresh the admin-specific list
             }}
             className="text-[10px] font-bold uppercase tracking-widest text-accent hover:text-foreground transition-colors"
           >
@@ -74,7 +74,7 @@ export function NotificationsTab({
                             if (!n.link) return;
                             
                             if (!n.isRead) {
-                              notificationsApi.markRead(n.id)
+                              markNotificationRead(n.id)
                                 .then(() => fetchNotifications())
                                 .catch(err => console.error("Mark read failed:", err));
                             }

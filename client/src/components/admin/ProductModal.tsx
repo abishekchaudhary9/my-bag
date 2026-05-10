@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
-import { resolveAssetUrl, uploadsApi } from "@/lib/api";
+import { X, Plus, Trash2, Sparkles } from "lucide-react";
+import { resolveAssetUrl, uploadsApi, aiApi } from "@/lib/api";
 import { Category, categories } from "@/data/products";
+import { toast } from "sonner";
 
 type ColorEntry = { name: string; hex: string; image: string };
 
@@ -34,6 +35,7 @@ export default function ProductModal({
 }: ProductModalProps) {
   const [form, setForm] = useState<ProductForm>(empty);
   const [saving, setSaving] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
   const [uploadingColor, setUploadingColor] = useState<number | null>(null);
   const isEdit = !!product;
 
@@ -86,6 +88,23 @@ export default function ProductModal({
       alert(err instanceof Error ? err.message : "Image upload failed.");
     } finally {
       setUploadingColor(null);
+    }
+  };
+
+  const handleMagicWrite = async () => {
+    if (!form.name) {
+      toast.error("Please enter a product name first");
+      return;
+    }
+    setGeneratingDescription(true);
+    try {
+      const { description } = await aiApi.generateDescription(form.name, form.material || "");
+      setForm(prev => ({ ...prev, description }));
+      toast.success("AI description generated");
+    } catch (err: any) {
+      toast.error(err.message || "AI generation failed");
+    } finally {
+      setGeneratingDescription(false);
     }
   };
 
@@ -146,8 +165,19 @@ export default function ProductModal({
             </label>
           </div>
           <label className="block">
-            <span className="eyebrow">Description</span>
-            <textarea rows={3} value={form.description} onChange={set("description")} className="mt-1 w-full bg-transparent border border-border focus:border-foreground p-3 text-sm focus:outline-none resize-none transition-colors" />
+            <div className="flex items-center justify-between">
+              <span className="eyebrow">Description</span>
+              <button 
+                type="button" 
+                onClick={handleMagicWrite}
+                disabled={generatingDescription}
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-accent hover:opacity-80 disabled:opacity-50"
+              >
+                <Sparkles className={`h-3 w-3 ${generatingDescription ? "animate-pulse" : ""}`} />
+                {generatingDescription ? "Generating..." : "Magic Write"}
+              </button>
+            </div>
+            <textarea rows={6} value={form.description} onChange={set("description")} className="mt-2 w-full bg-transparent border border-border focus:border-foreground p-3 text-sm focus:outline-none resize-none transition-colors" />
           </label>
 
           {/* ─── Colors / Images ─── */}

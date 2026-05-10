@@ -11,17 +11,75 @@ const { emitEvent } = require("../lib/socket");
 const orderService = require("./orderService");
 
 async function getStats() {
-  const [totalSales, ordersCount, productsCount, usersCount, products] = await Promise.all([
-    Order.aggregate([{ $group: { _id: null, total: { $sum: "$total" } } }]),
-    Order.countDocuments(),
+  const now = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(now.getDate() - 30);
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(now.getDate() - 60);
+
+  const [currentStats, prevStats, totalProducts, totalUsers, products] = await Promise.all([
+    // Current 30 days
+    Order.aggregate([
+      { $match: { created_at: { $gte: thirtyDaysAgo } } },
+      { $group: { _id: null, revenue: { $sum: "$total" }, count: { $sum: 1 } } }
+    ]),
+    // Previous 30 days (for comparison)
+    Order.aggregate([
+      { $match: { created_at: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
+      { $group: { _id: null, revenue: { $sum: "$total" }, count: { $sum: 1 } } }
+    ]),
     Product.countDocuments(),
     User.countDocuments({ role: "user" }),
     Product.find()
   ]);
 
-  const sales = totalSales.length > 0 ? totalSales[0].total : 0;
+  const currentRevenue = currentStats[0]?.revenue || 0;
+  const currentOrders = currentStats[0]?.count || 0;
+  const prevRevenue = prevStats[0]?.revenue || 1; // Avoid div by zero
+  const prevOrders = prevStats[0]?.count || 1;
 
+  const revenueChange = ((currentRevenue - prevRevenue) / prevRevenue) * 100;
+  const ordersChange = ((currentOrders - prevOrders) / prevOrders) * 100;
+
+  // Revenue Trend (Last 7 Days with gap filling)
+  const last7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    last7Days.push(d.toISOString().split('T')[0]); // YYYY-MM-DD
+  }
+
+  const startOfTrend = new Date();
+  startOfTrend.setDate(now.getDate() - 7);
+  startOfTrend.setHours(0,0,0,0);
+
+  const trendDataRaw = await Order.aggregate([
+    { $match: { created_at: { $gte: startOfTrend } } },
+    { $group: { 
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } }, 
+        revenue: { $sum: "$total" },
+        orders: { $sum: 1 }
+    }},
+    { $sort: { _id: 1 } }
+  ]);
+
+  const trendMap = {};
+  trendDataRaw.forEach(d => { trendMap[d._id] = d; });
+
+  const revenueTrend = last7Days.map(dateStr => {
+    const data = trendMap[dateStr];
+    // Format date for display (MM/DD)
+    const [y, m, d] = dateStr.split('-');
+    return {
+      date: `${m}/${d}`,
+      revenue: data?.revenue || 0,
+      orders: data?.orders || 0
+    };
+  });
+
+  // Status distribution (Current Month)
   const statusCounts = await Order.aggregate([
+    { $match: { created_at: { $gte: thirtyDaysAgo } } },
     { $group: { _id: "$status", count: { $sum: 1 } } }
   ]);
   const statuses = { processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
@@ -29,17 +87,13 @@ async function getStats() {
     if (statuses[s._id] !== undefined) statuses[s._id] = s.count;
   });
 
-  // Revenue Trend (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const revenueData = await Order.aggregate([
-    { $match: { created_at: { $gte: sevenDaysAgo } } },
-    { $group: { 
-        _id: { $dateToString: { format: "%m/%d", date: "$created_at" } }, 
-        revenue: { $sum: "$total" },
-        orders: { $sum: 1 }
-    }},
-    { $sort: { _id: 1 } }
+  // Top Customers (All Time)
+  const topUsers = await Order.aggregate([
+    { $group: { _id: "$user", spent: { $sum: "$total" }, orders: { $sum: 1 } } },
+    { $sort: { spent: -1 } },
+    { $limit: 5 },
+    { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "userData" } },
+    { $unwind: "$userData" }
   ]);
 
   // Category Distribution
@@ -51,36 +105,19 @@ async function getStats() {
     categoryMap[category].stock += (p.stock || 0);
   });
 
-  // Top Customers
-  const topUsers = await Order.aggregate([
-    { $group: { _id: "$user", spent: { $sum: "$total" }, orders: { $sum: 1 } } },
-    { $sort: { spent: -1 } },
-    { $limit: 5 },
-    { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "userData" } },
-    { $unwind: "$userData" }
+  // Customers Change (New users this month vs last month)
+  const [currentUsers, prevUsersCount] = await Promise.all([
+    User.countDocuments({ role: "user", created_at: { $gte: thirtyDaysAgo } }),
+    User.countDocuments({ role: "user", created_at: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } })
   ]);
-
-  // Calculate changes (simple mock for now based on actual counts vs defaults)
-  const lastMonth = new Date();
-  lastMonth.setMonth(lastMonth.getMonth() - 1);
-  
-  const [prevSales, prevOrders, prevUsers] = await Promise.all([
-    Order.aggregate([{ $match: { created_at: { $lt: lastMonth } } }, { $group: { _id: null, total: { $sum: "$total" } } }]),
-    Order.countDocuments({ created_at: { $lt: lastMonth } }),
-    User.countDocuments({ role: "user", created_at: { $lt: lastMonth } })
-  ]);
-
-  const pSales = prevSales.length > 0 ? prevSales[0].total : 1;
-  const revenueChange = ((sales - pSales) / pSales) * 100;
-  const ordersChange = prevOrders > 0 ? ((ordersCount - prevOrders) / prevOrders) * 100 : 0;
-  const customersChange = prevUsers > 0 ? ((usersCount - prevUsers) / prevUsers) * 100 : 0;
+  const customersChange = prevUsersCount > 0 ? ((currentUsers - prevUsersCount) / prevUsersCount) * 100 : 0;
 
   return {
     stats: {
-      revenue: sales,
-      orders: ordersCount,
-      products: productsCount,
-      customers: usersCount,
+      revenue: currentRevenue,
+      orders: currentOrders,
+      products: totalProducts,
+      customers: totalUsers,
       processingOrders: statuses.processing,
       shippedOrders: statuses.shipped,
       deliveredOrders: statuses.delivered,
@@ -88,7 +125,7 @@ async function getStats() {
       revenueChange,
       ordersChange,
       customersChange,
-      revenueTrend: revenueData.map(d => ({ date: d._id, revenue: d.revenue, orders: d.orders })),
+      revenueTrend,
       categoryTrend: Object.values(categoryMap),
       topCustomers: topUsers.map(u => ({
         id: String(u._id),

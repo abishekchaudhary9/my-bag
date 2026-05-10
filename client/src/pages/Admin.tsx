@@ -43,7 +43,8 @@ import {
   Activity, 
   Bell, 
   Ticket, 
-  User 
+  User,
+  ChevronDown
 } from "lucide-react";
 
 const TABS_CONFIG = [
@@ -89,6 +90,7 @@ export default function Admin() {
   const [replyQuestionTarget, setReplyQuestionTarget] = useState<any>(null);
   const [editQuestionTarget, setEditQuestionTarget] = useState<any>(null);
   const [deleteTargetQuestion, setDeleteTargetQuestion] = useState<any>(null);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Custom Hooks for Data & Actions
   const adminData = useAdminData();
@@ -203,7 +205,7 @@ export default function Admin() {
     );
   }
 
-  const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
+  const { unreadCount } = state;
 
   return (
     <AdminLayout 
@@ -225,24 +227,53 @@ export default function Admin() {
       </section>
 
       <section className="container-luxe pb-6">
-        {/* Mobile Tabs */}
-        <div className="md:hidden overflow-x-auto no-scrollbar border-b border-border">
-          <div className="flex whitespace-nowrap min-w-max pb-px">
-            {TABS_CONFIG.map((t) => {
-              const Icon = t.icon;
-              return (
-                <button 
-                  key={t.key} 
-                  onClick={() => handleTabChange(t.key as AdminTab)}
-                  className={`flex items-center gap-2 px-6 py-4 text-[11px] uppercase tracking-[0.14em] border-b-2 transition-all ${
-                    tab === t.key ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.5} /> {t.label}
-                </button>
-              );
-            })}
-          </div>
+        {/* Mobile Dropdown Nav */}
+        <div className="md:hidden relative">
+          <button
+            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+            className="w-full flex items-center justify-between px-6 py-4 bg-secondary/30 border border-border rounded-xl text-[11px] uppercase tracking-[0.14em] font-bold"
+          >
+            <div className="flex items-center gap-3">
+              {React.createElement(TABS_CONFIG.find(t => t.key === tab)?.icon || LayoutDashboard, { className: "h-4 w-4", strokeWidth: 1.5 })}
+              <span>{TABS_CONFIG.find(t => t.key === tab)?.label}</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-500 ${isMobileNavOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          <AnimatePresence>
+            {isMobileNavOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                className="absolute top-[calc(100%+0.5rem)] left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden p-2"
+              >
+                <div className="grid grid-cols-2 gap-1">
+                  {TABS_CONFIG.map((t) => {
+                    const Icon = t.icon;
+                    const isActive = tab === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => {
+                          handleTabChange(t.key as AdminTab);
+                          setIsMobileNavOpen(false);
+                        }}
+                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all duration-300 ${
+                          isActive 
+                            ? "bg-accent text-accent-foreground font-bold" 
+                            : "hover:bg-secondary/50 text-muted-foreground"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" strokeWidth={1.5} />
+                        <span className="text-[9px] uppercase tracking-widest">{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Desktop Tabs */}

@@ -76,6 +76,13 @@ if (require.main === module) {
         console.log("Health: /api/health");
         console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
       });
+
+      server.on("error", (e) => {
+        if (e.code === "EADDRINUSE") {
+          console.error(`Port ${PORT} is already in use. Please kill the process or wait a moment for it to release.`);
+          process.exit(1);
+        }
+      });
     })
     .catch((err) => {
       console.error("Server startup failed:", err.message);

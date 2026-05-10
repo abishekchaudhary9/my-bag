@@ -8,6 +8,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
+import { AIConcierge } from "@/components/ai/AIConcierge";
+
 export default function Layout({ children }: { children: ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
   const { pathname } = useLocation();
@@ -56,6 +58,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       <Header />
       <main className="flex-1 overflow-x-hidden will-change-scroll">{children}</main>
       <Footer />
+      <AIConcierge />
     </div>
   );
 }
