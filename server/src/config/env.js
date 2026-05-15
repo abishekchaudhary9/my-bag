@@ -1,6 +1,8 @@
 const path = require("path");
 
-require("dotenv").config({ path: path.join(__dirname, "../../.env"), override: true });
+require("dotenv").config({ path: path.join(__dirname, "../../.env") });
+
+const nodeEnv = process.env.NODE_ENV || "development";
 
 function parseNumber(value, fallback) {
   const parsed = parseInt(value || "", 10);
@@ -68,6 +70,7 @@ module.exports = {
     serviceAccount: firebaseServiceAccount,
   },
   database,
-  mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/maison_db",
+  mongodbUri: process.env.MONGODB_URI || (nodeEnv === "production" ? "" : "mongodb://localhost:27017/maison_db"),
+  nodeEnv,
 };
 

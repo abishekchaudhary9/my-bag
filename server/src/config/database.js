@@ -3,7 +3,7 @@ const env = require("./env");
 
 const connectDB = async () => {
   if (!env.mongodbUri) {
-    throw new Error("MONGODB_URI is required.");
+    throw new Error("MONGODB_URI is required. Set it in the deployment environment.");
   }
 
   try {

@@ -1,4 +1,14 @@
 // Deployment: 2026-05-09
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught startup exception:", err.stack || err.message || err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled startup rejection:", reason?.stack || reason?.message || reason);
+  process.exit(1);
+});
+
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -76,6 +86,11 @@ const seed = require("./config/seed");
 
 // Initialize and start server
 const startServer = async () => {
+  console.log(`Starting Maison API with Node ${process.version}`);
+  console.log(`Environment: ${env.nodeEnv}`);
+  console.log(`Port configured: ${PORT}`);
+  console.log(`MongoDB URI configured: ${env.mongodbUri ? "yes" : "no"}`);
+
   try {
     await connectDB();
     // Seed data if needed
@@ -85,7 +100,8 @@ const startServer = async () => {
       console.warn("Seeding skipped due to database error:", seedError.message);
     }
   } catch (err) {
-    console.error("Database connection phase failed:", err.message);
+    console.error("Database connection phase failed:", err.stack || err.message);
+    console.error("Check Render environment variables and MongoDB Atlas Network Access.");
     process.exit(1);
   }
 
