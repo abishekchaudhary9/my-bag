@@ -1,3 +1,3 @@
-const ORDER_STATUSES = ["processing", "shipped", "delivered", "cancelled"];
+const ORDER_STATUSES = ["payment_pending", "processing", "shipped", "delivered", "cancelled"];
 
 module.exports = { ORDER_STATUSES };

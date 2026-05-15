@@ -63,7 +63,8 @@ export default function OrderConfirmation() {
   useEffect(() => {
     if (!socket || !orderId) return;
     
-    socket.on("order_update", (data) => {
+    socket.on("order_update", (payload) => {
+      const data = payload?.data && payload?.type ? payload.data : payload;
       if (data.orderNumber === orderId) {
         ordersApi.get(orderId).then((res) => setOrder(res.order)).catch(console.error);
         fetchOrders();
@@ -99,9 +100,11 @@ export default function OrderConfirmation() {
     );
   }
 
-  const copyOrderId = () => {
-    navigator.clipboard.writeText(order.id);
-    toast.success("Order ID copied");
+  const orderNumber = order.orderNumber || order.id;
+
+  const copyOrderNumber = () => {
+    navigator.clipboard.writeText(orderNumber);
+    toast.success("Order number copied");
   };
 
   return (
@@ -149,13 +152,13 @@ export default function OrderConfirmation() {
             </p>
           </div>
 
-          {/* Order ID */}
+          {/* Order Number */}
           <div className="mt-10 flex items-center justify-center gap-3 animate-fade-up" style={{ animationDelay: "100ms" }}>
             <div className="px-5 py-3 bg-secondary flex items-center gap-3">
               <Package className="h-4 w-4 text-accent" strokeWidth={1.5} />
               <span className="text-sm">Order</span>
-              <span className="font-display text-lg">{order.id}</span>
-              <button onClick={copyOrderId} className="text-muted-foreground hover:text-foreground transition-colors">
+              <span className="font-display text-lg">{orderNumber}</span>
+              <button onClick={copyOrderNumber} className="text-muted-foreground hover:text-foreground transition-colors">
                 <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
               </button>
             </div>

@@ -26,18 +26,35 @@ export function setToken(token: string | null) {
   }
 }
 
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message: string;
+  statusCode: number;
+  error?: string;
+  timestamp: string;
+}
+
 function parseResponse<T>(res: Response, text: string) {
-  let data: any = null;
+  let apiResponse: ApiResponse<T> | any = null;
   try {
-    data = text ? JSON.parse(text) : null;
+    apiResponse = text ? JSON.parse(text) : null;
   } catch {
-    data = { error: text };
+    apiResponse = { error: text };
   }
 
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed with status ${res.status}`);
+    const errorMessage = apiResponse?.message || apiResponse?.error || `Request failed with status ${res.status}`;
+    throw new Error(errorMessage);
   }
 
+  // Handle standardized response format
+  if (apiResponse?.success === false) {
+    throw new Error(apiResponse?.message || "Request failed");
+  }
+
+  // Return the data field if it exists (new format), otherwise return the whole response (backward compatibility)
+  const data = apiResponse?.data ?? apiResponse;
   return normalizeAssetUrls(data) as T;
 }
 
@@ -108,5 +125,3 @@ export const apiClient: ApiClient = {
   uploadRequest,
   setToken,
 };
-
-

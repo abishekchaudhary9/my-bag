@@ -19,12 +19,15 @@ export function useAdminData() {
   const [feedback, setFeedback] = useState({ reviews: [] as any[], questions: [] as any[] });
   const [notifications, setNotifications] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
+  const [paymentPendingOrders, setPaymentPendingOrders] = useState(0);
 
   const fetchStats = useCallback(async () => {
     incrementLoading();
     try { 
       const d = await adminApi.stats(); 
-      setStats(d.stats); 
+      const nextStats = d?.stats || {};
+      setStats(nextStats); 
+      setPaymentPendingOrders(nextStats.paymentPendingOrders || 0);
     } catch (err: any) { 
       console.error("Stats fetch failed:", err);
       toast.error("Could not load dashboard stats");
@@ -37,7 +40,7 @@ export function useAdminData() {
     incrementLoading();
     try {
       const d = await adminApi.orders(status === "all" ? undefined : status);
-      setOrders(d.orders);
+      setOrders(Array.isArray(d?.orders) ? d.orders : []);
     } catch (err: any) {
       console.error("Orders fetch failed:", err);
       toast.error("Could not load orders list");
@@ -50,7 +53,7 @@ export function useAdminData() {
     incrementLoading();
     try { 
       const d = await adminApi.customers(); 
-      setCustomers(d.customers); 
+      setCustomers(Array.isArray(d?.customers) ? d.customers : []); 
     } catch (err: any) {
       console.error("Customers fetch failed:", err);
       toast.error("Could not load customers list");
@@ -115,6 +118,7 @@ export function useAdminData() {
   const displayOrders = stats?.orders || 0;
   const displayCustomers = stats?.customers || 0;
   const displayAvgOrder = displayOrders > 0 ? displayRevenue / displayOrders : 0;
+  const pendingOrders = paymentPendingOrders;
   const processingOrders = stats?.processingOrders || 0;
   const shippedOrders = stats?.shippedOrders || 0;
   const deliveredOrders = stats?.deliveredOrders || 0;
@@ -123,9 +127,10 @@ export function useAdminData() {
   const statusData = useMemo(() => [
     { status: "processing", label: "Processing", orders: processingOrders, fill: "#b98f47" },
     { status: "shipped", label: "Shipped", orders: shippedOrders, fill: "#2563eb" },
+    { status: "payment_pending", label: "Unpaid", orders: paymentPendingOrders, fill: "#f59e0b" },
     { status: "delivered", label: "Delivered", orders: deliveredOrders, fill: "#059669" },
     { status: "cancelled", label: "Cancelled", orders: stats?.cancelledOrders || 0, fill: "#dc2626" },
-  ].filter(d => d.orders > 0), [stats, processingOrders, shippedOrders, deliveredOrders]);
+  ].filter(d => d.orders > 0), [stats, processingOrders, shippedOrders, deliveredOrders, paymentPendingOrders]);
 
   const categoryData = stats?.categoryTrend || [];
   const topCustomers = stats?.topCustomers || [];
@@ -163,6 +168,7 @@ export function useAdminData() {
     displayOrders,
     displayCustomers,
     displayAvgOrder,
+    paymentPendingOrders,
     processingOrders,
     shippedOrders,
     deliveredOrders,

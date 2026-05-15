@@ -1,6 +1,6 @@
 const path = require("path");
 
-require("dotenv").config({ path: path.join(__dirname, "../../.env") });
+require("dotenv").config({ path: path.join(__dirname, "../../.env"), override: true });
 
 function parseNumber(value, fallback) {
   const parsed = parseInt(value || "", 10);
@@ -70,3 +70,4 @@ module.exports = {
   database,
   mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/maison_db",
 };
+

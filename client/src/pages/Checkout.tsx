@@ -95,17 +95,19 @@ export default function Checkout() {
 
       if (payment.method === "cod") {
         const { order } = await ordersApi.create(orderData);
+        const orderNumber = order.orderNumber || order.id;
         addOrder(order);
         clearCart();
-        navigate(`/order-confirmation/${order.id}`);
+        navigate(`/order-confirmation/${orderNumber}`);
       } else if (payment.method === "khalti") {
         toast.loading("Connecting to Khalti...", { id: "khalti-init" });
         const { order } = await ordersApi.create(orderData);
+        const orderNumber = order.orderNumber || order.id;
         const khaltiRes = await ordersApi.khaltiInitiate({
           amount: totals.total,
-          purchase_order_id: `order_${order.id}`,
+          purchase_order_id: orderNumber,
           purchase_order_name: "Maison Luxury Purchase",
-          return_url: `${window.location.origin}/order-confirmation/${order.id}?q=khalti`,
+          return_url: `${window.location.origin}/order-confirmation/${orderNumber}?q=khalti`,
           website_url: window.location.origin,
           customer_info: {
             name: `${shipping.firstName} ${shipping.lastName}`.trim() || "Customer",
@@ -121,6 +123,7 @@ export default function Checkout() {
         }
       } else if (payment.method === "esewa") {
         const { order } = await ordersApi.create(orderData);
+        const orderNumber = order.orderNumber || order.id;
         addOrder(order);
         clearCart();
 
@@ -150,7 +153,7 @@ export default function Checkout() {
           product_code: product_code,
           product_service_charge: "0",
           product_delivery_charge: "0",
-          success_url: `${window.location.origin}/order-confirmation/${order.id}`,
+          success_url: `${window.location.origin}/order-confirmation/${orderNumber}?q=su`,
           failure_url: window.location.href,
           signed_field_names: "total_amount,transaction_uuid,product_code",
           signature: signature,

@@ -115,7 +115,7 @@ export function CommandPalette() {
           <CommandItem onSelect={() => runCommand(() => navigate("/profile"))}>
             <User className="mr-2 h-4 w-4" />
             <span>My Profile</span>
-            <CommandShortcut>⌘P</CommandShortcut>
+            <CommandShortcut>Cmd P</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => navigate("/wishlist"))}>
             <Heart className="mr-2 h-4 w-4" />

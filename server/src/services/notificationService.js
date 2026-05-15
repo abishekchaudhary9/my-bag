@@ -4,16 +4,14 @@ const { emitEvent } = require("../lib/socket");
 
 async function listNotifications(userId) {
   const notifications = await Notification.find({ user: userId }).sort({ created_at: -1 });
-  return { 
-    notifications: notifications.map(n => ({
-      id: String(n._id),
-      title: n.title,
-      message: n.message,
-      link: n.link,
-      isRead: n.is_read,
-      createdAt: n.created_at
-    }))
-  };
+  return notifications.map(n => ({
+    id: String(n._id),
+    title: n.title,
+    message: n.message,
+    link: n.link,
+    isRead: n.is_read,
+    createdAt: n.created_at
+  }));
 }
 
 async function markAsRead(userId, notificationId) {

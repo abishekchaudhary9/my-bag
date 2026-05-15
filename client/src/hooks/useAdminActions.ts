@@ -28,6 +28,8 @@ export function useAdminActions({
   useEffect(() => {
     if (!ioSocket || !isAdmin) return;
 
+    const unwrap = (payload: any) => payload?.data && payload?.type ? payload.data : payload;
+
     const notifyAdmin = (title: string, message: string, targetTab: AdminTab, id?: string) => {
       toast(title, {
         description: message,
@@ -54,8 +56,17 @@ export function useAdminActions({
       });
     };
 
-    ioSocket.on("new_order", (data: any) => {
+    ioSocket.on("new_order", (payload: any) => {
+      const data = unwrap(payload);
       notifyAdmin("New Order", `Order #${data?.orderNumber || 'received'} just came in!`, "orders", data?.orderNumber);
+      fetchStats();
+      fetchOrders();
+      fetchNotifications();
+    });
+
+    ioSocket.on("order_update", (payload: any) => {
+      const data = unwrap(payload);
+      notifyAdmin("Order Updated", `Order #${data?.orderNumber || 'updated'} changed to ${data?.status || 'a new status'}.`, "orders", data?.orderNumber);
       fetchStats();
       fetchOrders();
       fetchNotifications();
@@ -66,19 +77,22 @@ export function useAdminActions({
       fetchNotifications();
     });
 
-    ioSocket.on("new_review", (data: any) => {
+    ioSocket.on("new_review", (payload: any) => {
+      const data = unwrap(payload);
       notifyAdmin("New Review", `New review for ${data?.productName || 'a product'}.`, "feedback", `feedback-review-${data?.id}`);
       fetchFeedback();
       fetchNotifications();
     });
 
-    ioSocket.on("new_question", (data: any) => {
+    ioSocket.on("new_question", (payload: any) => {
+      const data = unwrap(payload);
       notifyAdmin("New Question", `Customer asked a question about ${data?.productName || 'a product'}.`, "feedback", `feedback-question-${data?.id}`);
       fetchFeedback();
       fetchNotifications();
     });
 
-    ioSocket.on("new_customer", (data: any) => {
+    ioSocket.on("new_customer", (payload: any) => {
+      const data = unwrap(payload);
       notifyAdmin("New Customer", `${data?.name || 'A new user'} just registered.`, "customers");
       fetchStats();
       fetchCustomers();
@@ -96,6 +110,7 @@ export function useAdminActions({
 
     return () => {
       ioSocket.off("new_order");
+      ioSocket.off("order_update");
       ioSocket.off("new_message");
       ioSocket.off("new_review");
       ioSocket.off("new_question");

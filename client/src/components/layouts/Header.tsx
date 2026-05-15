@@ -3,7 +3,7 @@ import { Heart, Search, ShoppingBag, User, LogOut, Shield, Bell, X, Menu, Chevro
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { products } from "@/data/products";
 import { resolveAssetUrl, aiApi } from "@/lib/api";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
@@ -39,6 +39,27 @@ export default function Header() {
   const suggestions = q
     ? products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 5)
     : [];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const lenis = (window as any).lenis;
+    if (lenis) {
+      if (isSearchOpen || isMobileMenuOpen) {
+        lenis.stop();
+      } else {
+        lenis.start();
+      }
+    }
+  }, [isSearchOpen, isMobileMenuOpen]);
 
   const iconButtonClass = "flex h-10 w-10 shrink-0 items-center justify-center hover:text-accent transition-all duration-300 rounded-full hover:bg-secondary/20";
   const canUseWishlist = authState.isAuthenticated && !isAdmin;
@@ -247,9 +268,9 @@ export default function Header() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-0 left-0 w-full bg-background border-b border-border shadow-2xl z-[150]"
+            className="fixed inset-x-0 top-0 max-h-screen overflow-y-auto overscroll-contain bg-background border-b border-border shadow-2xl z-[150]"
           >
-            <div className="container-luxe py-8">
+            <div className="container-luxe py-6 md:py-8 pb-10">
               <div className="flex items-center gap-6">
                 <Search className="h-6 w-6 text-muted-foreground" />
                 <input
@@ -360,36 +381,36 @@ export default function Header() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-[85%] sm:w-[60%] md:w-[45%] bg-background z-[160] lg:hidden flex flex-col shadow-2xl border-r border-border"
+              className="fixed inset-y-0 left-0 w-[82vw] max-w-[360px] bg-background z-[160] lg:hidden flex flex-col shadow-2xl border-r border-border"
             >
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.8 }}
-                className="p-6 flex items-center justify-between border-b border-border"
+                className="p-4 flex items-center justify-between border-b border-border"
               >
-                <div className="font-display text-2xl tracking-tighter">MAISON</div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2.5 bg-secondary/30 hover:bg-secondary/50 rounded-full transition-colors">
-                  <X className="h-5 w-5" />
+                <div className="font-display text-xl tracking-tighter">MAISON</div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-secondary/30 hover:bg-secondary/50 rounded-full transition-colors">
+                  <X className="h-4 w-4" />
                 </button>
               </motion.div>
 
-              <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+              <div className="flex-1 overflow-hidden">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.2, duration: 0.8 }}
-                  className="p-8 pb-4 space-y-6"
+                  className="p-4 pb-3"
                 >
                   {authState.isAuthenticated ? (
-                    <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-border/50">
+                    <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg border border-border/50">
                       <Link to={isAdmin ? "/admin" : "/profile"} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden">
+                        <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent overflow-hidden">
                           {authState.user?.avatar ? (
                             <img src={authState.user.avatar} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <User className="h-6 w-6" strokeWidth={1.5} />
+                            <User className="h-5 w-5" strokeWidth={1.5} />
                           )}
                         </div>
                         <div>
@@ -412,7 +433,7 @@ export default function Header() {
                     <Link
                       to="/login"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex items-center justify-between p-6 bg-secondary/30 rounded-2xl hover:bg-secondary/50 transition-colors border border-border/50"
+                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors border border-border/50"
                     >
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Welcome</div>
@@ -423,7 +444,7 @@ export default function Header() {
                   )}
                 </motion.div>
 
-                <nav className="p-8 space-y-8">
+                <nav className="px-4 pb-3 space-y-1">
                   {nav.map((item) => (
                     <motion.div
                       key={item.label}
@@ -435,7 +456,7 @@ export default function Header() {
                       <Link
                         to={item.to}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="block font-display text-xl hover:text-accent transition-colors tracking-tight"
+                        className="block rounded-lg px-3 py-2.5 font-display text-base hover:bg-secondary/30 hover:text-accent transition-colors tracking-tight"
                       >
                         {item.label}
                       </Link>
@@ -443,7 +464,7 @@ export default function Header() {
                   ))}
                 </nav>
 
-                <div className="h-20" />
+                <div className="h-1" />
               </div>
 
               <motion.div
@@ -451,13 +472,13 @@ export default function Header() {
                 whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="p-8 border-t border-border bg-secondary/5"
+                className="p-4 border-t border-border bg-secondary/5"
               >
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Appearance</span>
                   <ThemeToggle />
                 </div>
-                <div className="flex gap-8">
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
                   <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Story</Link>
                   <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Contact</Link>
                   <Link to="/journal" onClick={() => setIsMobileMenuOpen(false)} className="text-[10px] font-bold uppercase tracking-widest hover:text-accent transition-colors">Journal</Link>

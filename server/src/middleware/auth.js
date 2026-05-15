@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const env = require("../config/env");
+const { error: errorResponse } = require("../utils/responseHandler");
 
 const JWT_SECRET = env.jwtSecret;
 
@@ -10,15 +11,18 @@ const JWT_SECRET = env.jwtSecret;
 function authenticate(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Authentication required" });
+    return res.status(401).json(errorResponse("Authentication required. Please provide a valid token", 401));
   }
   try {
     const token = header.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch {
-    return res.status(401).json({ error: "Invalid or expired token" });
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json(errorResponse("Token has expired. Please login again", 401));
+    }
+    return res.status(401).json(errorResponse("Invalid or expired token", 401));
   }
 }
 
@@ -26,12 +30,16 @@ function authenticate(req, res, next) {
  * Middleware: requires admin role (must be used after authenticate).
  */
 function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json(errorResponse("Authentication required", 401));
+  }
+
   const email = String(req.user?.email || "").toLowerCase();
   const isEmailAllowed = env.adminEmails.includes(email);
   const isRoleAdmin = req.user?.role === "admin";
 
-  if (!req.user || (!isRoleAdmin && !isEmailAllowed)) {
-    return res.status(403).json({ error: "Admin access required" });
+  if (!isRoleAdmin && !isEmailAllowed) {
+    return res.status(403).json(errorResponse("Admin access required. You do not have permission to access this resource", 403));
   }
   next();
 }

@@ -1,10 +1,44 @@
 const Order = require("../models/orderModel");
+const OrderCounter = require("../models/orderCounterModel");
 const CartItem = require("../models/cartModel");
 const Product = require("../models/productModel");
 const User = require("../models/userModel");
 const createHttpError = require("../utils/httpError");
 const { emitEvent } = require("../lib/socket");
 const notificationService = require("./notificationService");
+
+function getBusinessDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Kathmandu",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}${values.month}${values.day}`;
+}
+
+async function generateOrderNumber() {
+  const dateKey = getBusinessDateKey();
+  const counter = await OrderCounter.findOneAndUpdate(
+    { _id: `orders:${dateKey}` },
+    { $inc: { sequence: 1 } },
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
+  );
+
+  return `MSN-${dateKey}-${String(counter.sequence).padStart(6, "0")}`;
+}
+
+async function findOrderByPublicOrInternalId(orderId) {
+  const query = [{ order_number: orderId }];
+
+  if (Order.db.base.Types.ObjectId.isValid(orderId)) {
+    query.push({ _id: orderId });
+  }
+
+  return Order.findOne({ $or: query });
+}
 
 async function createOrder(userId, orderData) {
   const { 
@@ -48,7 +82,7 @@ async function createOrder(userId, orderData) {
   // We allow a small tolerance for rounding if necessary, but here we expect exact match or we use server values
   // To be safe against tampering, we'll use server calculated values for the actual order
   
-  const orderNumber = "ORD-" + Math.random().toString(36).substr(2, 9).toUpperCase();
+  const orderNumber = await generateOrderNumber();
 
   const order = new Order({
     order_number: orderNumber,
@@ -73,7 +107,9 @@ async function createOrder(userId, orderData) {
       lng: addr.coordinates?.lng || addr.lng
     },
     payment_method: paymentMethod,
-    items: verifiedItems
+    items: verifiedItems,
+    status: paymentMethod === "cod" ? "processing" : "payment_pending",
+    payment_status: paymentMethod === "cod" ? "pending" : "pending"
   });
 
   // 4. Atomic-ish Stock Update (In a real app, use a transaction)
@@ -149,7 +185,7 @@ async function getUserOrders(userId) {
 }
 
 async function getOrderDetails(orderNumber) {
-  const order = await Order.findOne({ order_number: orderNumber });
+  const order = await findOrderByPublicOrInternalId(orderNumber);
   if (!order) {
     throw createHttpError(404, "Order not found");
   }
@@ -206,6 +242,10 @@ async function updateOrderStatus(orderNumber, status, trackingNumber) {
     orderNumber: order.order_number,
     status: order.status
   });
+  emitEvent("admins", "order_update", {
+    orderNumber: order.order_number,
+    status: order.status
+  });
 
   return { order: order.toJSON() };
 }
@@ -219,10 +259,17 @@ async function trackOrder(trackingNumber) {
 }
 
 async function verifyPayment(orderId, pidx, method) {
-  const order = await Order.findOne({ order_number: orderId });
+  const order = await findOrderByPublicOrInternalId(orderId);
   if (!order) throw createHttpError(404, "Order not found");
 
   if (method === "khalti") {
+    if (!process.env.KHALTI_SECRET_KEY) {
+      throw createHttpError(500, "Khalti payment is not configured.");
+    }
+    if (!pidx) {
+      throw createHttpError(400, "Khalti payment id is required.");
+    }
+
     const response = await fetch("https://a.khalti.com/api/v2/epayment/lookup/", {
       method: "POST",
       headers: {
@@ -232,20 +279,45 @@ async function verifyPayment(orderId, pidx, method) {
       body: JSON.stringify({ pidx })
     });
     const data = await response.json();
-    if (data.status === "Completed") {
-      order.payment_status = "paid";
-      await order.save();
-      return { success: true, message: "Payment verified" };
+
+    if (!response.ok) {
+      const message = data?.detail || data?.message || "Khalti payment lookup failed.";
+      throw createHttpError(response.status, message);
+    }
+
+    if (data.status !== "Completed") {
+      throw createHttpError(400, `Payment is ${data.status || "not completed"}.`);
     }
   } else if (method === "esewa") {
     // eSewa verification usually happens via a GET request to their verify endpoint
     // For now we trust the success_url param if it has a token/refId, but a real app should verify server-side
-    order.payment_status = "paid";
-    await order.save();
-    return { success: true, message: "Payment verified" };
+  } else {
+    throw createHttpError(400, "Unsupported payment method.");
   }
-  
-  return { success: false, message: "Verification failed" };
+
+  order.payment_status = "paid";
+  if (order.status === "payment_pending") {
+    order.status = "processing";
+  }
+  await order.save();
+
+  emitEvent(`user_${order.user}`, "notification", {
+    title: "Payment Successful",
+    message: `Payment for order #${orderId} has been verified.`,
+    link: `/order-confirmation/${orderId}`
+  });
+  emitEvent(`user_${order.user}`, "order_update", {
+    orderNumber: order.order_number,
+    status: order.status,
+    paymentStatus: order.payment_status
+  });
+  emitEvent("admins", "order_update", {
+    orderNumber: order.order_number,
+    status: order.status,
+    paymentStatus: order.payment_status
+  });
+
+  return { success: true, message: "Payment verified" };
 }
 
 module.exports = {

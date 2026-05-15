@@ -80,21 +80,19 @@ async function loginWithFirebase({ idToken, profile, ip, userAgent }) {
   const firstName = String(profile.firstName || name.firstName).trim();
   const lastName = String(profile.lastName || name.lastName).trim();
   const role = isAdminEmail(email) ? "admin" : "user";
+  const isPhoneAuth = !email && !!phone;
 
   if (phone && !isValidNepalPhone(phone)) {
     throw createHttpError(400, "Enter a valid Nepal mobile number.");
   }
 
-  let user = await User.findOne({ 
-    $or: [
-      { firebase_uid: decoded.uid },
-      { email: email || { $exists: false } },
-      { phone: phone || { $exists: false } }
-    ]
-  });
+  const lookupConditions = [{ firebase_uid: decoded.uid }];
+  if (email) lookupConditions.push({ email });
+  if (phone) lookupConditions.push({ phone });
+
+  let user = await User.findOne({ $or: lookupConditions });
 
   if (user) {
-    const isPhoneAuth = dbEmail.includes("phone.maison.local");
     const isVerified = decoded.email_verified || user.email_verified || isPhoneAuth;
 
     user.firebase_uid = decoded.uid;
@@ -147,7 +145,7 @@ async function loginWithFirebase({ idToken, profile, ip, userAgent }) {
     state: profile.state || null,
     zip: profile.zip || null,
     country: profile.country || null,
-    email_verified: decoded.email_verified || false
+    email_verified: decoded.email_verified || isPhoneAuth
   });
 
   await user.save();
@@ -164,7 +162,6 @@ async function loginWithFirebase({ idToken, profile, ip, userAgent }) {
     }).catch(err => console.error("Welcome Email Failed:", err));
   }
 
-  const isPhoneAuth = dbEmail.includes("phone.maison.local");
   const isVerified = user.email_verified || isPhoneAuth;
   const token = isVerified ? signToken(user) : null;
   return { user: user.toJSON(), token };

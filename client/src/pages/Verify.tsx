@@ -27,8 +27,7 @@ export default function Verify() {
     }
 
     setLoading(true);
-    const identifier = state.user.phone || state.user.email;
-    const result = await verifyOtp(identifier, code);
+    const result = await verifyOtp(state.user.email, code);
     setLoading(false);
 
     if (result.success) {
@@ -40,7 +39,7 @@ export default function Verify() {
   };
 
   const handleResend = async () => {
-    const identifier = state.user?.phone || state.user?.email;
+    const identifier = state.user?.email;
     if (!identifier) return;
     setResending(true);
     const result = await sendOtp(identifier);

@@ -1,7 +1,7 @@
 # Maison E-Commerce — Project Reference Document
 
 > **Purpose:** Single source of truth for any AI agent, developer, or reviewer to understand, modify, or audit this project.  
-> **Last Updated:** 2026-05-10  
+> **Last Updated:** 2026-05-11  
 > **Author:** Abishek  
 > **Location:** `C:\Users\Abishek\Desktop\Bag\`
 
@@ -24,6 +24,8 @@
 13. [Environment Variables](#13-environment-variables)
 14. [Development Guidelines](#14-development-guidelines)
 15. [Common Patterns & Conventions](#15-common-patterns--conventions)
+16. [Stabilization Notes (May 2026)](#16-stabilization-notes-may-2026)
+17. [AI Repository Intelligence Layer](#17-ai-repository-intelligence-layer)
 
 ---
 
@@ -119,7 +121,7 @@ Bag/
 │   ├── package.json
 │   └── vite.config.ts
 │
-├── server/                          # Node.js Backend
+│── server/                          # Node.js Backend
 │   ├── src/
 │   │   ├── app.js                   # Main Express app entry point
 │   │   ├── config/                  # Configuration
@@ -176,6 +178,7 @@ Bag/
 │   └── .env                         # Environment variables (DO NOT COMMIT)
 │
 ├── .kilo/                           # Kilo agent configuration
+├── .repo-intel/                     # AI Repository Intelligence Layer data
 └── MAISON_PROJECT_REFERENCE.md      # ← THIS FILE
 ```
 
@@ -223,17 +226,23 @@ Bag/
 ### 4.3 Khalti Payment Flow
 
 ```
-[User selects Khalti at checkout]
+[User selects Khalti/eSewa at checkout]
+       ↓
+POST /api/orders
+  → Order created with status: "payment_pending"
        ↓
 POST /api/orders/khalti-initiate
-  → Server calls Khalti API: https://a.khalti.com/api/v2/epayment/initiate/
-  → Returns pidx + payment_url
+  → Server calls Gateway API
+  → Returns pidx/token + payment_url
        ↓
-[User redirected to Khalti payment page]
+[User redirected to payment page]
        ↓
-[After payment, Khalti redirects to return_url]
+[After payment, user returns to /order-confirmation/:id]
        ↓
-[Order status updated to "processing"]
+[Client calls /api/orders/verify-payment]
+  → Server verifies transaction with Gateway
+  → Status updated to "processing" (only on success)
+  → Emits "payment_success" / "notification"
 ```
 
 **Khalti Secret Key** (live): `763829f3ec654a02a78de16937109282`  
@@ -624,7 +633,7 @@ if (subtotal > 5000 || subtotal === 0) {
 |---|---|---|
 | `order_number` | String | Required, unique |
 | `user` | ObjectId | Ref: User |
-| `status` | String | Enum: `processing, shipped, delivered, cancelled`, default `processing` |
+| `status` | String | Enum: `payment_pending, processing, shipped, delivered, cancelled`, default `processing` |
 | `subtotal` | Number | Required |
 | `shipping` | Number | Default 0 |
 | `discount` | Number | Default 0 |
@@ -660,9 +669,6 @@ if (subtotal > 5000 || subtotal === 0) {
 | `description` | String | Public description |
 | `terms` | String | Internal notes |
 | `active` | Boolean | Default `true` |
-
-### Review, Question, Notification, Contact
-Located in `/server/src/models/`: `reviewModel.js`, `questionModel.js`, `notificationModel.js`, `contactModel.js`
 
 ---
 
@@ -714,6 +720,10 @@ Located in `/server/src/services/`:
 ---
 
 ## 10. Real-Time (Socket.io)
+
+### Client-Side Management (`/client/src/context/AuthContext.tsx`)
+- **Reactive State:** The `socket` instance is stored in React state to ensure reliable listener attachment across authentication cycles.
+- **Auto-Join:** Joining `user_<id>` and `admins` rooms is handled within a `useEffect` triggered by `socket` availability and `isAuthenticated` state.
 
 ### Server-Side (`/server/src/lib/socket.js`)
 - **Rooms:**
@@ -805,115 +815,78 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
-VITE_GOOGLE_CLIENT_ID=
 ```
 
 ---
 
 ## 14. Development Guidelines
 
-### Auto-Update Policy (CRITICAL)
-**Every time a task is completed, a file is modified, or a feature is added:**
-1. Update the `Auto-Update Log` section in `/server/.agent/rules/project-rules.md`
-2. Update this reference document if architecture changes
+### Routing Patterns
+- **Frontend**: Standard React Router v6. Protected routes use `<ProtectedRoute />` wrapper.
+- **Backend**: Resource-based routing in `server/src/routes/`. Middleware `authenticate` and `requireAdmin` for security.
 
-### Code Standards
-- **Frontend:** TypeScript strict mode, camelCase, React hooks
-- **Backend:** CommonJS (require/module.exports), async/await with `asyncHandler` wrapper
-- **Error handling:** Centralized error handler middleware
-- **API calls:** All go through `client/src/lib/api.ts` for consistency
+### State Management
+- Use `StoreContext` for cart/wishlist.
+- Use `AuthContext` for user session and sockets.
+- Use `useAdminData` for dashboard stats to keep components clean.
 
-### Testing
-```bash
-cd client && npm test        # Run Vitest
-```
-
-### Running the Project
-```bash
-# Server
-cd server && npm run dev     # Nodemon + Node
-
-# Client
-cd client && npm run dev     # Vite dev server (port 5080 or 8080)
-```
+### Styling
+- **Tailwind CSS** for layout and micro-adjustments.
+- **Vanilla CSS** for complex custom animations not easily handled by Tailwind.
+- Use `cn()` helper (tailwind-merge + clsx) for conditional classes.
 
 ---
 
 ## 15. Common Patterns & Conventions
 
-### API Client Pattern (client/src/lib/api.ts)
-- `request<T>(endpoint, options)` — Generic fetch wrapper with JWT auth
-- `uploadRequest<T>(endpoint, formData)` — Multipart upload wrapper
-- `normalizeAssetUrls()` — Automatically resolves image URLs from Cloudinary/server
-- `setToken()` / `getToken()` — JWT persistence in localStorage
+### Error Handling
+- **Backend**: Use `asyncHandler` for all controllers. Return `errorResponse(message, code)` from `responseHandler`.
+- **Frontend**: Use `toast.error()` for user-facing errors. Catch API errors in the calling component.
 
-### Middleware Chain (server)
-```
-Request → cors → express.json → auth middleware (where required) → controller
-```
+### Data Aggregation
+- Admin dashboard metrics are aggregated in `adminService.js` using MongoDB pipelines (`$match`, `$group`, `$sort`).
 
-### Naming Conventions
-| Convention | Example |
+---
+
+## 16. Stabilization Notes (May 2026)
+
+### 16.1 Scroll & Motion
+- **Lenis Optimization**: `lagSmoothing(0)` removed to prevent stuttering. Wheel multiplier set to `1.0` for natural feel.
+- **Scroll Locking**: Background scrolling is paused via `lenis.stop()` when global modals (Search Ctrl+K, Mobile Nav) are active.
+
+### 16.2 UI Polish
+- **Ctrl+K Command Palette**: Global keyboard shortcut for search with automatic input focus.
+- **Admin Ops Queue**: Added "Unpaid orders" metric to track `payment_pending` status.
+- **Notification Sync**: Resolved double-nesting bug in the backend service that prevented unread counts from updating correctly.
+
+---
+
+## 17. AI Repository Intelligence Layer
+
+Maison includes a persistent repository memory system designed to help AI agents and developers understand the codebase without full-repo scans.
+
+### Core Components
+- **Graph Storage**: `.repo-intel/memory.json` (contains nodes, symbols, and edges)
+- **Indexer**: AST-based parser (`ts-morph`) that maps dependencies and relationships.
+- **Query Engine**: CLI tool to search symbols and trace architectural flows.
+
+### Key Commands
+| Command | Description |
 |---|---|
-| Route files | `auth.js`, `products.js`, `orders.js` |
-| Controller files | `authController.js`, `productController.js` |
-| Service files | `authService.js`, `productService.js` |
-| Model files | `userModel.js`, `productModel.js` |
-| Client API groups | `authApi`, `productsApi`, `ordersApi`, `cartApi` |
-| MongoDB models | PascalCase: `Order`, `User`, `Product` |
+| `npm run repo:index` | Scans the repo and updates the graph (incremental) |
+| `npm run repo:summarize` | Generates semantic summaries for every indexed file |
+| `npm run repo:query search <q>` | Search for components, functions, or features |
+| `npm run repo:query deps <path>` | Show file dependencies and where it is used |
+| `npm run repo:query flow <q>` | Trace architectural flows (e.g., `auth`, `checkout`) |
+| `npm run repo:watch` | Watch for file changes and update the graph in real-time |
 
-### MongoDB Models → Frontend Type Mapping
-- Models use `toJSON()` methods that automatically transform snake_case → camelCase
-- This ensures frontend always receives camelCase fields (e.g., `order_number` → `orderNumber`)
-
-### Auth Guard Pattern
-```javascript
-// Routes that need auth:
-router.get("/", authenticate, handler)
-
-// Routes that need admin:
-router.get("/", authenticate, requireAdmin, handler)
-
-// Public routes:
-router.get("/", handler)
-```
-
-### Coupon Discount Logic
-- Coupons store `discount_pct` (percentage)
-- Applied in `StoreContext.tsx`: `discount = (subtotal * coupon.pct) / 100`
-- No stacking — single coupon at a time
-
-### Image URL Resolution
-- All image URLs from the API go through `resolveAssetUrl()` in `api.ts`
-- Patterns handled:
-  - Absolute URLs (https://...) → passed through
-  - Data/blob URLs → passed through
-  - `/images/...` paths → prefixed with server base URL
-  - Image files without prefix → prepended with `/images/`
-  - Emails (contain `@`) → not transformed
+### Flow Tracing Examples
+- **`npm run repo:query flow auth`**: Traces the relationship between `AuthContext`, `authService`, and `authMiddleware`.
+- **`npm run repo:query flow payment`**: Traces the path from `Checkout.tsx` to `orderController` and Khalti integration.
 
 ---
 
-## Known Hardcoded Values
-
-| Value | Location | Notes |
-|---|---|---|
-| Khalti Secret Key | `server/src/controllers/orderController.js:26` | `763829f3ec654a02a78de16937109282` |
-| Admin Emails | `server/src/config/env.js:63` | `abishekc441@gmail.com` |
-| Admin Emails (frontend hint) | `client/src/context/AuthContext.tsx:29` | `abishekc441@gmail.com` |
-| Free shipping threshold | `client/src/context/StoreContext.tsx:235` | Rs 5,000 |
-| Shipping cost | `client/src/context/StoreContext.tsx:235` | Rs 150 flat |
-| JWT storage key | `client/src/lib/api.ts:64` | `maison.token` |
-| Context local storage key | `client/src/context/StoreContext.tsx:43` | `maison.store.v1` |
-
----
-
-## Revision History
-
-| Date | Author | Change |
-|---|---|---|
-| 2026-05-10 | Abishek | Initial project reference document created |
-
----
-
-*This document should be updated whenever significant architectural changes, new features, or bug fixes are applied to the project.*
+### Misc Patterns
+- **API Base URL**: Configured in `client/src/lib/api.ts`.
+- **Currency**: All prices are in NPR. Formatted via `formatCurrency` helper.
+- **Images**: Local images are stored in `server/public/images`. Served via static middleware.

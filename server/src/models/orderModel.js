@@ -14,7 +14,7 @@ const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   status: { 
     type: String, 
-    enum: ["processing", "shipped", "delivered", "cancelled"], 
+    enum: ["payment_pending", "processing", "shipped", "delivered", "cancelled"], 
     default: "processing" 
   },
   subtotal: { type: Number, required: true },
@@ -36,7 +36,6 @@ const orderSchema = new mongoose.Schema({
     country: { type: String },
     lat: { type: Number },
     lng: { type: Number }
-
   },
   payment_method: { type: String, default: "card" },
   payment_status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
@@ -72,7 +71,6 @@ orderSchema.methods.toJSON = function() {
         lat: obj.shipping_address?.lat,
         lng: obj.shipping_address?.lng
       }
-
     },
     paymentMethod: obj.payment_method,
     paymentStatus: obj.payment_status,

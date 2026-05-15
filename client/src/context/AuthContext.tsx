@@ -13,7 +13,6 @@ import {
   signOut,
   updatePassword,
   updateProfile as updateFirebaseProfile,
-  sendEmailVerification,
 } from "firebase/auth";
 import { authApi, ordersApi, notificationsApi, setToken, uploadsApi } from "@/lib/api";
 import { io, Socket } from "socket.io-client";
@@ -50,6 +49,7 @@ export type User = {
 
 export type Order = {
   id: string;
+  orderNumber?: string;
   createdAt: string;
   status: "processing" | "shipped" | "delivered" | "cancelled";
   items: { name: string; color: string; size: string; qty: number; price: number; image: string }[];
@@ -67,6 +67,7 @@ type AuthState = {
   notifications: any[];
   unreadCount: number;
   loading: boolean;
+  socket: Socket | null;
 };
 
 type AuthAction =
@@ -77,9 +78,10 @@ type AuthAction =
   | { type: "ADD_ORDER"; order: Order }
   | { type: "SET_NOTIFICATIONS"; notifications: any[] }
   | { type: "MARK_NOTIFICATIONS_READ" }
+  | { type: "SET_SOCKET"; socket: Socket | null }
   | { type: "SET_LOADING"; loading: boolean };
 
-const initial: AuthState = { user: null, isAuthenticated: false, orders: [], notifications: [], unreadCount: 0, loading: true };
+const initial: AuthState = { user: null, isAuthenticated: false, orders: [], notifications: [], unreadCount: 0, loading: true, socket: null };
 
 let phoneLoginConfirmation: ConfirmationResult | null = null;
 let phoneResetConfirmation: ConfirmationResult | null = null;
@@ -114,6 +116,8 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
       };
     case "SET_LOADING":
       return { ...state, loading: action.loading };
+    case "SET_SOCKET":
+      return { ...state, socket: action.socket };
     default:
       return state;
   }
@@ -162,13 +166,15 @@ type AuthCtx = {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
-let socket: Socket | null = null;
-
 function authNotConfigured() {
   return {
     success: false,
     error: "Firebase authentication is not configured yet.",
   };
+}
+
+function unwrapSocketPayload<T = any>(payload: any): T {
+  return payload?.data && payload?.type ? payload.data : payload;
 }
 
 async function exchangeFirebaseUser(profile?: any) {
@@ -238,17 +244,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const initSocket = useCallback(() => {
-    if (!socket) {
-      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    if (!state.socket) {
+      const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/+$/, "");
       const socketUrl = apiBase.replace(/\/api$/, "");
       
-      socket = io(socketUrl, { 
+      const newSocket = io(socketUrl, { 
         withCredentials: true,
         transports: ["websocket", "polling"]
       });
+      dispatch({ type: "SET_SOCKET", socket: newSocket });
+      return newSocket;
     }
-    return socket;
-  }, []);
+    return state.socket;
+  }, [state.socket]);
 
   const exchangeFirebaseUserWithSocket = useCallback(async (profile?: any) => {
     const { user, token } = await exchangeFirebaseUser(profile);
@@ -302,7 +310,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { user, token } = await exchangeFirebaseUserWithSocket(signupDataBuffer);
           signupDataBuffer = null; // Clear buffer after use
-          if (!user.emailVerified) {
+          const isPhoneUser = !user.email && !!user.phone;
+          if (!user.emailVerified && !isPhoneUser) {
              setToken(null);
              if (active) dispatch({ type: "LOGIN", user });
              return;
@@ -342,23 +351,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Real-time synchronization logic
   useEffect(() => {
-    if (!state.isAuthenticated || !state.user || !socket) return;
+    if (!state.isAuthenticated || !state.user || !state.socket) return;
+
+    const curSocket = state.socket;
+    const isAdmin = state.user.role === "admin" || ADMIN_EMAILS.includes(state.user.email);
 
     const onConnect = () => {
       console.log("[Socket] Connected to real-time server");
-      socket?.emit("join_user", state.user!.id);
-      if (state.user!.role === "admin") {
-        socket?.emit("join_admin");
+      curSocket.emit("join_user", state.user!.id);
+      if (isAdmin) {
+        curSocket.emit("join_admin");
       }
     };
 
-    if (socket.connected) {
+    if (curSocket.connected) {
       onConnect();
     }
 
-    socket.on("connect", onConnect);
+    curSocket.on("connect", onConnect);
 
-    socket.on("notification", (data) => {
+    curSocket.on("notification", (payload) => {
+      const data = unwrapSocketPayload(payload);
       if (!data.skipToast) {
         toast.info(data.title, {
           description: data.message,
@@ -367,7 +380,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fetchNotifications();
     });
 
-    socket.on("order_update", (data) => {
+    curSocket.on("order_update", (payload) => {
+      const data = unwrapSocketPayload(payload);
       toast.info(`Order Status Updated`, {
         description: `Order #${data.orderNumber} is now ${data.status}.`,
       });
@@ -375,27 +389,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fetchNotifications();
     });
 
-    socket.on("new_order", (data) => {
-      if (state.user?.role === "admin") {
+    curSocket.on("new_order", (payload) => {
+      const data = unwrapSocketPayload(payload);
+      if (isAdmin) {
         toast.success(`New Order Received!`, {
           description: `Order #${data.orderNumber} has been placed.`,
         });
         fetchOrders();
         fetchNotifications();
       } else {
-        toast.success(`Order Confirmed!`, {
-          description: `Your order #${data.orderNumber} has been placed successfully.`,
+        const isOnline = data.paymentMethod !== "cod";
+        toast.success(isOnline ? "Order Received" : "Order Confirmed!", {
+          description: isOnline 
+            ? `Order #${data.orderNumber} is pending payment verification.`
+            : `Your order #${data.orderNumber} has been placed successfully.`,
         });
       }
     });
 
     return () => {
-      socket?.off("connect", onConnect);
-      socket?.off("notification");
-      socket?.off("order_update");
-      socket?.off("new_order");
+      curSocket.off("connect", onConnect);
+      curSocket.off("notification");
+      curSocket.off("order_update");
+      curSocket.off("new_order");
     };
-  }, [state.isAuthenticated, state.user, fetchOrders, fetchNotifications]);
+  }, [state.isAuthenticated, state.user, state.socket, fetchOrders, fetchNotifications]);
 
 
   const value: AuthCtx = {
@@ -535,6 +553,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
 
+        await finishFirebaseLogin(signupDataBuffer);
+        signupDataBuffer = null;
+
         // Send OTP immediately
         await authApi.sendOtp(data.email.trim().toLowerCase());
         
@@ -618,9 +639,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("Logout: Firebase auth not available", err);
       }
       
-      if (socket) {
-        socket.disconnect();
-        socket = null;
+      if (state.socket) {
+        state.socket.disconnect();
+        dispatch({ type: "SET_SOCKET", socket: null });
       }
       setToken(null);
       dispatch({ type: "LOGOUT" });
@@ -668,15 +689,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    socket,
+    socket: state.socket,
     resendVerificationEmail: async () => {
-      const auth = getConfiguredFirebaseAuth();
-      if (!auth.currentUser) return { success: false, error: "No user logged in" };
+      if (!state.user?.email) return { success: false, error: "No email account is logged in" };
       try {
-        await sendEmailVerification(auth.currentUser);
+        await authApi.sendOtp(state.user.email);
         return { success: true };
       } catch (err: unknown) {
-        return { success: false, error: getErrorMessage(err, "Could not send verification email") };
+        return { success: false, error: getErrorMessage(err, "Could not send verification code") };
       }
     },
     sendOtp: async (email) => {
@@ -689,20 +709,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     verifyOtp: async (email, code) => {
       try {
-        const res = await authApi.verifyOtp(email, code);
-        if (res.success) {
-           const auth = getConfiguredFirebaseAuth();
-           // Force refresh Firebase token to pick up the new "verified" status
-           if (auth.currentUser) {
-             await auth.currentUser.getIdToken(true);
-           }
-           // Reload user to get verified status
-           const { user, token } = await exchangeFirebaseUser();
-           setToken(token);
-           dispatch({ type: "LOGIN", user });
-           return { success: true };
+        await authApi.verifyOtp(email, code);
+        const auth = getConfiguredFirebaseAuth();
+        if (auth.currentUser) {
+          await auth.currentUser.getIdToken(true);
         }
-        return { success: false, error: res.message };
+        const { user, token } = await exchangeFirebaseUser();
+        setToken(token);
+        dispatch({ type: "LOGIN", user });
+        return { success: true };
       } catch (err: unknown) {
         return { success: false, error: getErrorMessage(err, "Verification failed") };
       }

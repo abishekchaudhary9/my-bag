@@ -82,7 +82,7 @@ async function getStats() {
     { $match: { created_at: { $gte: thirtyDaysAgo } } },
     { $group: { _id: "$status", count: { $sum: 1 } } }
   ]);
-  const statuses = { processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+  const statuses = { payment_pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
   statusCounts.forEach(s => {
     if (statuses[s._id] !== undefined) statuses[s._id] = s.count;
   });
@@ -118,6 +118,7 @@ async function getStats() {
       orders: currentOrders,
       products: totalProducts,
       customers: totalUsers,
+      paymentPendingOrders: statuses.payment_pending,
       processingOrders: statuses.processing,
       shippedOrders: statuses.shipped,
       deliveredOrders: statuses.delivered,
@@ -129,7 +130,7 @@ async function getStats() {
       categoryTrend: Object.values(categoryMap),
       topCustomers: topUsers.map(u => ({
         id: String(u._id),
-        name: `${u.userData.first_name} ${u.userData.last_name}`,
+        name: `${u.userData.first_name || u.userData.firstName || ''} ${u.userData.last_name || u.userData.lastName || ''}`.trim() || 'Unknown',
         spent: u.spent,
         orders: u.orders
       }))
@@ -180,7 +181,7 @@ async function listCustomers() {
     const stats = statsMap[String(c._id)] || { count: 0, spent: 0 };
     return {
       ...json,
-      name: `${json.firstName || ''} ${json.lastName || ''}`.trim() || 'Unknown',
+      name: `${json.firstName || json.first_name || ''} ${json.lastName || json.last_name || ''}`.trim() || 'Unknown',
       orders: stats.count,
       spent: stats.spent
     };

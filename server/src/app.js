@@ -12,8 +12,20 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 const app = express();
 const server = http.createServer(app);
 
-const rawOrigins = process.env.CLIENT_URL || env.clientUrl || "http://localhost:8080, http://127.0.0.1:8080";
-const allowedOrigins = (Array.isArray(rawOrigins) ? rawOrigins : String(rawOrigins).split(","))
+const defaultOrigins = [
+  "http://localhost:8080",
+  "http://127.0.0.1:8080",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+
+const rawOrigins = process.env.CLIENT_URL || env.clientUrl || defaultOrigins;
+const allowedOrigins = Array.from(new Set([
+  ...(Array.isArray(rawOrigins) ? rawOrigins : String(rawOrigins).split(",")),
+  ...defaultOrigins,
+]))
   .map((origin) => origin.trim())
   .filter(Boolean);
 
@@ -62,32 +74,40 @@ const PORT = process.env.PORT || env.port || 5000;
 const connectDB = require("./config/database");
 const seed = require("./config/seed");
 
-if (require.main === module) {
-  connectDB()
-    .then(async () => {
-      // Seed data if needed
+// Initialize and start server
+const startServer = async () => {
+  try {
+    await connectDB();
+    // Seed data if needed
+    try {
       await seed();
-      
-      // Initialize Socket.io
-      initSocket(server, allowedOrigins);
+    } catch (seedError) {
+      console.warn("Seeding skipped due to database error:", seedError.message);
+    }
+  } catch (err) {
+    console.error("Database connection phase failed:", err.message);
+    process.exit(1);
+  }
 
-      server.listen(PORT, () => {
-        console.log(`Maison API server (with Sockets & MongoDB) running on port ${PORT}`);
-        console.log("Health: /api/health");
-        console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
-      });
+  // Initialize Socket.io
+  initSocket(server, allowedOrigins);
 
-      server.on("error", (e) => {
-        if (e.code === "EADDRINUSE") {
-          console.error(`Port ${PORT} is already in use. Please kill the process or wait a moment for it to release.`);
-          process.exit(1);
-        }
-      });
-    })
-    .catch((err) => {
-      console.error("Server startup failed:", err.message);
+  server.listen(PORT, () => {
+    console.log(`Maison API server (with Sockets & MongoDB) running on port ${PORT}`);
+    console.log("Health: /api/health");
+    console.log(`CORS allowed: ${allowedOrigins.join(", ")}`);
+  });
+
+  server.on("error", (e) => {
+    if (e.code === "EADDRINUSE") {
+      console.error(`Port ${PORT} is already in use. Please kill the process or wait a moment for it to release.`);
       process.exit(1);
-    });
+    }
+  });
+};
+
+if (require.main === module) {
+  startServer();
 }
 
 module.exports = app;

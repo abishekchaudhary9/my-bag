@@ -1,65 +1,31 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
+import { motion } from "framer-motion";
 import Layout from "@/components/layouts/Layout";
 import ProductCard from "@/components/shop/ProductCard"; // v1.0.1
-import { categories, products } from "@/data/products";
+import { products } from "@/data/products";
 import heroBag from "@/assets/hero-bag.jpg";
 
-gsap.registerPlugin(ScrollTrigger);
+const philosophyReveal = {
+  hidden: { opacity: 0, y: 40, filter: "blur(6px)" },
+  visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+};
+
+const pictureReveal = {
+  hidden: { opacity: 0, scale: 1.06 },
+  visible: { opacity: 1, scale: 1 },
+};
 
 const Index = () => {
   const container = useRef(null);
   const featured = products.slice(0, 4);
-  const editorial = products.slice(2, 5);
-
-  const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [1000, 3000], [-100, 100]);
-
-  useGSAP(() => {
-    let mm = gsap.matchMedia();
-
-    mm.add("(min-width: 1024px)", () => {
-      // Parallax effect for hero image - Desktop Only
-      gsap.to(".hero-image", {
-        yPercent: 20,
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".hero-section",
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
-
-      // Staggered reveal for section titles - Desktop Only
-      gsap.utils.toArray(".reveal-text").forEach((text: any) => {
-        gsap.from(text, {
-          y: 50,
-          opacity: 0,
-          duration: 1,
-          ease: "power4.out",
-          scrollTrigger: {
-            trigger: text,
-            start: "top 85%",
-          },
-        });
-      });
-    });
-
-    // Cleanup matchMedia
-    return () => mm.revert();
-  }, { scope: container });
 
   return (
     <div ref={container}>
       <Layout>
         {/* HERO */}
-        <section className="relative bg-gradient-warm hero-section will-change-scroll">
+        <section className="relative bg-gradient-warm hero-section">
           <div className="container-luxe grid lg:grid-cols-12 gap-10 lg:gap-16 pt-12 md:pt-20 pb-20 lg:pb-32 items-end overflow-hidden">
           <motion.div 
             initial={{ opacity: 0, x: -100 }}
@@ -125,11 +91,12 @@ const Index = () => {
       </section>
       {/* CATEGORIES - BENTO GRID */}
       <motion.section 
-        initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        variants={philosophyReveal}
+        initial="hidden"
+        whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 1, ease: "easeOut" }}
-        className="container-luxe py-24 md:py-32 will-change-scroll"
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="container-luxe py-24 md:py-32"
       >
         <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
           <div className="max-w-2xl">
@@ -222,7 +189,14 @@ const Index = () => {
       </motion.section>
 
       {/* FEATURED SELECTION */}
-      <section className="bg-secondary/20 py-24 md:py-32">
+      <motion.section
+        variants={philosophyReveal}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="bg-secondary/20 py-24 md:py-32"
+      >
         <div className="container-luxe">
           <div className="flex items-end justify-between mb-16">
             <div>
@@ -236,12 +210,16 @@ const Index = () => {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* PHILOSOPHY - CINEMATIC SECTION */}
-      <section className="relative h-[80vh] flex items-center overflow-hidden bg-black will-change-scroll">
+      <section className="relative h-[80vh] flex items-center overflow-hidden bg-black">
         <motion.div 
-          style={{ y }}
+          variants={pictureReveal}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="absolute inset-0 -z-10"
         >
           <div className="absolute inset-0 bg-black/40 z-10" />
@@ -253,10 +231,11 @@ const Index = () => {
         </motion.div>
         <div className="container-luxe text-white text-center z-20">
           <motion.div
-            initial={{ opacity: 0, y: 50, filter: "blur(8px)" }}
-            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            variants={philosophyReveal}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
+            transition={{ duration: 1, ease: "easeOut" }}
             className="max-w-4xl mx-auto"
           >
             <div className="eyebrow text-white/60 mb-6">Our Philosophy</div>
@@ -272,10 +251,11 @@ const Index = () => {
 
       {/* NEWSLETTER */}
       <motion.section 
-        initial={{ opacity: 0, y: 50, filter: "blur(10px)" }}
-        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        variants={philosophyReveal}
+        initial="hidden"
+        whileInView="visible"
         viewport={{ once: true, margin: "-50px" }}
-        transition={{ duration: 1, ease: "easeOut" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         className="container-luxe py-32 text-center"
       >
         <div className="max-w-3xl mx-auto">

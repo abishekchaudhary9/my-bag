@@ -97,6 +97,7 @@ export default function Orders() {
             {state.orders.map((order, idx) => {
               const status = STATUS_MAP[order.status as keyof typeof STATUS_MAP] || STATUS_MAP.processing;
               const StatusIcon = status.icon;
+              const orderNumber = order.orderNumber || order.id;
               return (
                 <article
                   key={order.id}
@@ -105,7 +106,7 @@ export default function Orders() {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
                     <div>
-                      <div className="font-display text-xl">{order.id}</div>
+                      <div className="font-display text-xl">{orderNumber}</div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {order.createdAt ? new Date(order.createdAt).toLocaleString("en-US", {
                           year: "numeric",
@@ -164,7 +165,7 @@ export default function Orders() {
                       )}
                       <div className="flex items-center gap-4 ml-auto sm:ml-0">
                         <Link
-                          to={`/order-confirmation/${order.id}`}
+                          to={`/order-confirmation/${orderNumber}`}
                           className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />

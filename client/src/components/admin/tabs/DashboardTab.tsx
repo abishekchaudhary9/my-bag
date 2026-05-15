@@ -39,6 +39,7 @@ interface DashboardTabProps {
   displayCustomers: number;
   topCustomers: any[];
   displayAvgOrder: number;
+  paymentPendingOrders: number;
   deliveredOrders: number;
   revenueTrend: any[];
   statusData: any[];
@@ -65,6 +66,7 @@ export function DashboardTab({
   displayCustomers,
   topCustomers,
   displayAvgOrder,
+  paymentPendingOrders,
   deliveredOrders,
   revenueTrend,
   statusData,
@@ -87,7 +89,7 @@ export function DashboardTab({
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard icon={DollarSign} label="Revenue" value={formatCurrency(displayRevenue)} detail={`${displayOrders} orders tracked`} tone="text-emerald-600" index={0} />
-        <MetricCard icon={ShoppingBag} label="Orders" value={displayOrders} detail={`${processingOrders} processing, ${shippedOrders} shipped`} tone="text-blue-600" index={1} />
+        <MetricCard icon={ShoppingBag} label="Orders" value={displayOrders} detail={`${processingOrders} processing, ${paymentPendingOrders} unpaid`} tone="text-blue-600" index={1} />
         <MetricCard icon={Users} label="Customers" value={displayCustomers} detail={`${topCustomers.length} high-value profiles`} tone="text-violet-600" index={2} />
         <MetricCard icon={TrendingUp} label="Avg. Order" value={formatCurrency(displayAvgOrder)} detail={`${deliveredOrders} delivered orders`} tone="text-amber-600" index={3} />
       </div>
@@ -174,6 +176,7 @@ export function DashboardTab({
           <div className="grid gap-3">
             {[
               { label: "Processing orders", value: processingOrders, icon: Clock, tone: "text-amber-600", action: () => { setOrderFilter("processing"); setTab("orders"); fetchOrders("processing"); } },
+              { label: "Unpaid orders", value: paymentPendingOrders, icon: DollarSign, tone: "text-orange-500", action: () => { setOrderFilter("payment_pending"); setTab("orders"); fetchOrders("payment_pending"); } },
               { label: "Shipped orders", value: shippedOrders, icon: Truck, tone: "text-blue-600", action: () => { setOrderFilter("shipped"); setTab("orders"); fetchOrders("shipped"); } },
               { label: "Low stock items", value: lowStockProducts.length, icon: AlertTriangle, tone: "text-red-600", action: () => setTab("products") },
               { label: "Open feedback", value: unresolvedFeedback, icon: Activity, tone: "text-violet-600", action: () => setTab("feedback") },

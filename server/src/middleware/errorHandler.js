@@ -1,5 +1,7 @@
+const { error: errorResponse } = require("../utils/responseHandler");
+
 function notFound(req, res) {
-  res.status(404).json({ error: "Route not found" });
+  res.status(404).json(errorResponse("Route not found", 404));
 }
 
 function errorHandler(err, req, res, next) {
@@ -13,9 +15,8 @@ function errorHandler(err, req, res, next) {
     console.error("Unhandled error:", err);
   }
 
-  res.status(statusCode).json({
-    error: statusCode >= 500 && !err.expose ? "Server error" : err.message,
-  });
+  const message = statusCode >= 500 && !err.expose ? "Server error" : err.message;
+  res.status(statusCode).json(errorResponse(message, statusCode, err.expose ? null : undefined));
 }
 
 module.exports = { notFound, errorHandler };

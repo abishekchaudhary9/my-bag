@@ -15,18 +15,27 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
 
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+
+    if (prefersReducedMotion || coarsePointer) {
+      (window as any).lenis = null;
+      return;
+    }
+
     const lenis = new Lenis({
-      duration: 1.4,
+      duration: 0.85,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: "vertical",
       gestureOrientation: "vertical",
       smoothWheel: true,
-      wheelMultiplier: 1.1,
-      touchMultiplier: 1.8,
+      wheelMultiplier: 0.9,
+      touchMultiplier: 1,
       infinite: false,
     });
 
     lenisRef.current = lenis;
+    (window as any).lenis = lenis;
 
     // Synchronize Lenis with GSAP ScrollTrigger
     lenis.on("scroll", ScrollTrigger.update);
@@ -36,12 +45,12 @@ export default function Layout({ children }: { children: ReactNode }) {
     };
 
     gsap.ticker.add(tick);
-    gsap.ticker.lagSmoothing(0);
 
     return () => {
       lenis.destroy();
       gsap.ticker.remove(tick);
       lenisRef.current = null;
+      (window as any).lenis = null;
     };
   }, []);
 
@@ -56,7 +65,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
       <Header />
-      <main className="flex-1 will-change-scroll overflow-x-clip">{children}</main>
+      <main className="flex-1 overflow-x-clip">{children}</main>
       <Footer />
       <AIConcierge />
     </div>
