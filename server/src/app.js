@@ -80,20 +80,14 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || env.port || 5000;
+const DB_RETRY_MS = Number.parseInt(process.env.DB_RETRY_MS || "30000", 10);
 
 const connectDB = require("./config/database");
 const seed = require("./config/seed");
 
-// Initialize and start server
-const startServer = async () => {
-  console.log(`Starting Maison API with Node ${process.version}`);
-  console.log(`Environment: ${env.nodeEnv}`);
-  console.log(`Port configured: ${PORT}`);
-  console.log(`MongoDB URI configured: ${env.mongodbUri ? "yes" : "no"}`);
-
+const initializeDatabase = async () => {
   try {
     await connectDB();
-    // Seed data if needed
     try {
       await seed();
     } catch (seedError) {
@@ -105,8 +99,23 @@ const startServer = async () => {
     console.error("Check Render environment variables and MongoDB Atlas Network Access.");
     console.log("Database connection phase failed:", startupError);
     console.log("Check Render environment variables and MongoDB Atlas Network Access.");
+
+    if (env.nodeEnv === "production") {
+      console.log(`Server remains online; retrying MongoDB connection in ${DB_RETRY_MS / 1000}s.`);
+      setTimeout(initializeDatabase, DB_RETRY_MS);
+      return;
+    }
+
     process.exit(1);
   }
+};
+
+// Initialize and start server
+const startServer = () => {
+  console.log(`Starting Maison API with Node ${process.version}`);
+  console.log(`Environment: ${env.nodeEnv}`);
+  console.log(`Port configured: ${PORT}`);
+  console.log(`MongoDB URI configured: ${env.mongodbUri ? "yes" : "no"}`);
 
   // Initialize Socket.io
   initSocket(server, allowedOrigins);
@@ -123,6 +132,8 @@ const startServer = async () => {
       process.exit(1);
     }
   });
+
+  initializeDatabase();
 };
 
 if (require.main === module) {
