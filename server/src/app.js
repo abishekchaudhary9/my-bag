@@ -100,8 +100,11 @@ const startServer = async () => {
       console.warn("Seeding skipped due to database error:", seedError.message);
     }
   } catch (err) {
-    console.error("Database connection phase failed:", err.stack || err.message);
+    const startupError = err?.stack || err?.message || String(err);
+    console.error("Database connection phase failed:", startupError);
     console.error("Check Render environment variables and MongoDB Atlas Network Access.");
+    console.log("Database connection phase failed:", startupError);
+    console.log("Check Render environment variables and MongoDB Atlas Network Access.");
     process.exit(1);
   }
 
